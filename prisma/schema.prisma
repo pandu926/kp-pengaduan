@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // atau postgresql/sqlite
+  url      = env("DATABASE_URL")
+}
+
+model Pengaduan {
+  id              Int       @id @default(autoincrement())
+  isi             String
+  lokasi          String?
+  gambar          String?
+  tanggal         DateTime  @default(now())
+  status          Status    @default(MENUNGGU)
+  tanggapan       String?
+  ditanggapiPada  DateTime?
+  adminId         Int?
+  admin           Admin?    @relation("AdminPengaduan", fields: [adminId], references: [id])
+  userId          Int
+  user            User      @relation(fields: [userId], references: [id])
+}
+
+model Admin {
+  id         Int          @id @default(autoincrement())
+  nama       String
+  username   String       @unique
+  password   String
+  pengaduan  Pengaduan[]  @relation("AdminPengaduan")
+}
+
+model User {
+  id         Int         @id @default(autoincrement())
+  email        String      @unique
+  nama       String
+  kontak     String
+  pengaduan  Pengaduan[]
+}
+
+enum Status {
+  MENUNGGU
+  DIPROSES
+  SELESAI
+  DITOLAK
+}
