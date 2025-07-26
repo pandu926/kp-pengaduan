@@ -3,6 +3,7 @@
 import { useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -13,8 +14,13 @@ export default function AdminLoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await axios.post("/api/admin/login", { username, password });
-      if (res.status === 200) router.push("/admin/dashboard");
+      const res = await signIn("credentials", {
+        redirect: false,
+        username,
+        password,
+      });
+
+      router.push("/admin/dashboard");
     } catch (err: any) {
       setError(err.response?.data?.error || "Login gagal");
     }

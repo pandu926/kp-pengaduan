@@ -106,7 +106,7 @@ export default function FormPengaduan() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="max-w-lg w-full bg-white p-8 rounded-2xl shadow-md">
         <h2 className="text-2xl font-semibold mb-6 text-gray-800">
-          Form Pengaduan Masyarakat
+          formulir pemesan online jasa kontruksi
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           {!userExists && (
