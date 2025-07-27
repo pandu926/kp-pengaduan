@@ -1,37 +1,85 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import { isAuthorized } from "@/lib/auth";
-
+import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
-// GET semua admin
-export async function GET(req: Request) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+// GET - Ambil semua admin
+export async function GET() {
+  try {
+    const admins = await prisma.admin.findMany({
+      select: {
+        id: true,
+        nama: true,
+        email: true,
+        dibuatPada: true,
+      },
+      orderBy: {
+        dibuatPada: "desc",
+      },
+    });
 
-  const admins = await prisma.admin.findMany();
-  return NextResponse.json(admins);
+    return NextResponse.json({
+      success: true,
+      data: admins,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, error: "Gagal mengambil data admin" },
+      { status: 500 }
+    );
+  } finally {
+    await prisma.$disconnect();
+  }
 }
 
-// POST tambah admin baru
-export async function POST(req: Request) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+// POST - Buat admin baru
+export async function POST(request: NextRequest) {
+  try {
+    const { nama, email, kataSandi } = await request.json();
 
-  const { nama, username, password } = await req.json();
+    if (!nama || !email || !kataSandi) {
+      return NextResponse.json(
+        { success: false, error: "Nama, email, dan kata sandi diperlukan" },
+        { status: 400 }
+      );
+    }
 
-  if (!nama || !username || !password) {
+    const hashedPassword = await bcrypt.hash(kataSandi, 12);
+
+    const admin = await prisma.admin.create({
+      data: {
+        nama,
+        email,
+        kataSandi: hashedPassword,
+      },
+      select: {
+        id: true,
+        nama: true,
+        email: true,
+        dibuatPada: true,
+      },
+    });
+
     return NextResponse.json(
-      { error: "Semua field wajib diisi" },
-      { status: 400 }
+      {
+        success: true,
+        data: admin,
+      },
+      { status: 201 }
     );
+  } catch (error: any) {
+    if (error.code === "P2002") {
+      return NextResponse.json(
+        { success: false, error: "Email sudah terdaftar" },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json(
+      { success: false, error: "Gagal membuat admin" },
+      { status: 500 }
+    );
+  } finally {
+    await prisma.$disconnect();
   }
-
-  const newAdmin = await prisma.admin.create({
-    data: { nama, username, password },
-  });
-
-  return NextResponse.json(newAdmin, { status: 201 });
 }

@@ -1,66 +1,78 @@
 "use client";
 
 import { useState } from "react";
-import axios from "axios";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
+  const [kataSandi, setKataSandi] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      const res = await signIn("credentials", {
-        redirect: false,
-        username,
-        password,
-      });
+    setError("");
+    setSuccess("");
 
-      router.push("/admin/dashboard");
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Login gagal");
+    const res = await signIn("credentials", {
+      redirect: false,
+      email,
+      kataSandi,
+    });
+    console.log(res.error);
+
+    if (res?.ok && res?.error === undefined) {
+      setSuccess("Login berhasil! Mengalihkan...");
+      setTimeout(() => router.push("/admin/dashboard"), 1500);
+    } else {
+      setError("Email atau kata sandi salah.");
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-white shadow-xl rounded-3xl p-8">
-        <h2 className="text-3xl font-semibold text-center text-blue-600 mb-6">
+      <div className="w-full max-w-md bg-white shadow-2xl rounded-3xl p-8">
+        <h2 className="text-3xl font-bold text-center text-blue-600 mb-6">
           Login Admin
         </h2>
 
         {error && (
-          <p className="text-sm text-red-600 text-center mb-4">{error}</p>
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl mb-4 text-sm text-center">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-xl mb-4 text-sm text-center">
+            {success}
+          </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleLogin} className="space-y-5">
           <div>
-            <label className="text-sm font-medium text-gray-700">
-              Username
+            <label className="block text-sm font-medium text-gray-700">
+              Email
             </label>
             <input
               type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none"
-              placeholder="admin123"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="mt-1 w-full px-4 py-2 border rounded-xl border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none"
+              placeholder="admin@example.com"
               required
             />
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700">
-              Password
+            <label className="block text-sm font-medium text-gray-700">
+              Kata Sandi
             </label>
             <input
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none"
+              value={kataSandi}
+              onChange={(e) => setKataSandi(e.target.value)}
+              className="mt-1 w-full px-4 py-2 border rounded-xl border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none"
               placeholder="••••••••"
               required
             />
@@ -75,7 +87,7 @@ export default function AdminLoginPage() {
         </form>
 
         <p className="mt-6 text-xs text-center text-gray-400">
-          Sistem Pengaduan Masyarakat Desa Timbang
+          Sisitem Pemesanan CV Arfilla Jaya Putra
         </p>
       </div>
     </div>

@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import React, { useState } from "react";
 import { FaBars, FaTimes } from "react-icons/fa";
 
@@ -16,7 +17,7 @@ export default function Navbar() {
         <div className="  px-5 sm:px-6 lg:px-20">
           <div className="flex justify-between h-16 items-center">
             {/* Logo */}
-            <div className="text-2xl font-bold text-[#954C2E]">NANA CABIN</div>
+            <div className="text-2xl font-bold text-[#954C2E]">Logo</div>
 
             {/* Menu Desktop */}
             <div className="hidden md:flex text-xl space-x-6">
@@ -38,12 +39,12 @@ export default function Navbar() {
               >
                 Galeri
               </a>
-              <a
-                href=" https://wa.me/6281234567890?text=Halo%20admin%20Villa%20Nana%2C%20saya%20ingin%20melakukan%20pemesanan.%20Mohon%20informasi%20ketersediaan%20dan%20cara%20booking%20nya%2C%20terima%20kasih."
+              <Link
+                href="/user/pengaduan"
                 className="bg-[#954C2E] text-white font-semibold px-6 py-2 rounded-xl hover:bg-[#7c3e26]"
               >
                 Booking
-              </a>
+              </Link>
             </div>
 
             {/* Hamburger (Mobile) */}

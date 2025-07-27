@@ -1,0 +1,88 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Layanan } from "@/lib/types";
+import Button from "../Common/Button";
+
+interface LayananFormProps {
+  layanan?: Layanan | null;
+  onSubmit: (data: Partial<Layanan>) => void;
+  onCancel: () => void;
+}
+
+const LayananForm = ({ layanan, onSubmit, onCancel }: LayananFormProps) => {
+  const [formData, setFormData] = useState({
+    nama: "",
+    deskripsi: "",
+    urlGambar: "",
+  });
+
+  useEffect(() => {
+    if (layanan) {
+      setFormData({
+        nama: layanan.nama,
+        deskripsi: layanan.deskripsi || "",
+        urlGambar: layanan.urlGambar || "",
+      });
+    }
+  }, [layanan]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(formData);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Nama Layanan
+        </label>
+        <input
+          type="text"
+          value={formData.nama}
+          onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
+          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Deskripsi
+        </label>
+        <textarea
+          value={formData.deskripsi}
+          onChange={(e) =>
+            setFormData({ ...formData, deskripsi: e.target.value })
+          }
+          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          rows={3}
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          URL Gambar
+        </label>
+        <input
+          type="url"
+          value={formData.urlGambar}
+          onChange={(e) =>
+            setFormData({ ...formData, urlGambar: e.target.value })
+          }
+          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        />
+      </div>
+
+      <div className="flex justify-end space-x-3 pt-4">
+        <Button variant="secondary" onClick={onCancel}>
+          Batal
+        </Button>
+        <Button type="submit">{layanan ? "Update" : "Simpan"}</Button>
+      </div>
+    </form>
+  );
+};
+
+export default LayananForm;

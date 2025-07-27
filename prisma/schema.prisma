@@ -3,44 +3,82 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql" // atau postgresql/sqlite
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model Pengaduan {
-  id              Int       @id @default(autoincrement())
-  isi             String
-  lokasi          String?
-  gambar          String?
-  tanggal         DateTime  @default(now())
-  status          Status    @default(MENUNGGU)
-  tanggapan       String?
-  ditanggapiPada  DateTime?
-  adminId         Int?
-  admin           Admin?    @relation("AdminPengaduan", fields: [adminId], references: [id])
-  userId          Int
-  user            User      @relation(fields: [userId], references: [id])
-}
-
 model Admin {
-  id         Int          @id @default(autoincrement())
-  nama       String
-  username   String       @unique
-  password   String
-  pengaduan  Pengaduan[]  @relation("AdminPengaduan")
+  id             Int      @id @default(autoincrement())      // ID Admin
+  nama           String                                       // Nama Admin
+  email          String   @unique                            // Email Admin
+  kataSandi      String                                       // Kata sandi yang di-hash
+  dibuatPada     DateTime @default(now())                    // Tanggal dibuat
 }
 
-model User {
-  id         Int         @id @default(autoincrement())
-  email        String      @unique
-  nama       String
-  kontak     String
-  pengaduan  Pengaduan[]
+model Pengguna {
+  id         Int      @id @default(autoincrement())          // ID Pengguna
+  nama       String                                           // Nama pengguna
+  email      String   @unique                                // Email pengguna
+  googleId   String   @unique                                // ID Google OAuth
+  dibuatPada DateTime @default(now())                        // Tanggal dibuat
+
+  pesanan    Pesanan[]                                        // Relasi ke pesanan
 }
 
-enum Status {
+model Layanan {
+  id          Int      @id @default(autoincrement())          // ID Layanan
+  nama        String                                           // Nama layanan
+  deskripsi   String?                                          // Deskripsi layanan
+  urlGambar   String?                                          // Gambar layanan
+  dibuatPada  DateTime @default(now())                        // Tanggal dibuat
+  pesanan     Pesanan[]                                        // Relasi ke pesanan
+}
+
+model Pesanan {
+  id               Int           @id @default(autoincrement())       // ID Pesanan
+  pengguna         Pengguna      @relation(fields: [penggunaId], references: [id], onDelete: Cascade)
+  penggunaId       Int                                             // ID pengguna pemesan
+  layanan          Layanan?      @relation(fields: [layananId], references: [id])
+  layananId        Int?                                            // Layanan yang dipilih
+  hargaDisepakati  Decimal?                                        // Harga yang disepakati
+  tanggalPesan     DateTime                                         // Tanggal pemesanan
+  status           StatusPesanan @default(MENUNGGU)                 // Status pesanan
+  lokasi           String?                                          // Lokasi proyek
+  catatan          String?                                          // Catatan tambahan
+  dibuatPada       DateTime      @default(now())                    // Tanggal dibuat
+  progres          ProgresPesanan[]                                // Relasi progres pesanan
+}
+
+model ProgresPesanan {
+  id               Int      @id @default(autoincrement())           // ID progres
+  pesanan          Pesanan  @relation(fields: [pesananId], references: [id], onDelete: Cascade)
+  pesananId        Int                                           // Pesanan terkait
+  keterangan       String?                                       // Penjelasan progres
+  persenProgres    Int                                           // Persentase pengerjaan
+  urlDokumentasi   String?                                       // Gambar dokumentasi
+  diperbaruiPada   DateTime @default(now())                      // Tanggal diperbarui
+}
+
+model Portofolio {
+  id              Int      @id @default(autoincrement())           // ID Portofolio
+  judul           String                                           // Judul proyek
+  deskripsi       String?                                          // Deskripsi
+  urlGambar       String?                                          // URL gambar
+  tanggalSelesai  DateTime?                                        // Tanggal selesai
+  dibuatPada      DateTime @default(now())                        // Tanggal dibuat
+}
+
+model Laporan {
+  id              Int      @id @default(autoincrement())           // ID Laporan
+  bulanLaporan    DateTime                                         // Bulan laporan
+  totalPesanan    Int?                                             // Jumlah pesanan
+  totalPendapatan Decimal?                 // Total pendapatan
+  dibuatPada      DateTime @default(now())                        // Tanggal dibuat
+}
+
+enum StatusPesanan {
   MENUNGGU
   DIPROSES
   SELESAI
-  DITOLAK
+  DIBATALKAN
 }

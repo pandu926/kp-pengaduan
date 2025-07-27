@@ -15,6 +15,7 @@ export const middleware = auth((req) => {
   const { nextUrl } = req;
   const isAuthenticated = !!req.auth;
   const userRole = req.auth?.user?.role;
+  console.log(req.auth?.user);
 
   const pathname = nextUrl.pathname;
 
@@ -24,16 +25,22 @@ export const middleware = auth((req) => {
 
   // 🔒 Belum login & buka private route
   if (!isAuthenticated && !isPublicRoute) {
-    return Response.redirect(new URL("/user", nextUrl));
+    if (isAdminRoute) {
+      return Response.redirect(new URL("/admin", nextUrl));
+    }
+    if (isUserRoute) {
+      return Response.redirect(new URL("/user", nextUrl));
+    }
+    return Response.redirect(new URL("/user", nextUrl)); // default redirect
   }
 
   // ✅ Sudah login, ingin akses route sesuai role
   if (isAuthenticated) {
     if (userRole === "ADMIN" && isUserRoute) {
-      return Response.redirect(new URL("/admin", nextUrl)); // redirect admin yg salah ke dashboard admin
+      return Response.redirect(new URL("/admin", nextUrl));
     }
     if (userRole === "USER" && isAdminRoute) {
-      return Response.redirect(new URL("/user/dashboard", nextUrl)); // redirect user biasa yang coba buka /admin
+      return Response.redirect(new URL("/user/dashboard", nextUrl));
     }
   }
 
@@ -42,6 +49,6 @@ export const middleware = auth((req) => {
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|icon).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|icon|public|images|.*\\.(?:ico|png|jpg|jpeg|gif|svg)$).*)",
   ],
 };

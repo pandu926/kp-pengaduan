@@ -10,25 +10,26 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     CredentialsProvider({
       name: "Admin",
       credentials: {
-        username: { label: "Username", type: "text" },
-        password: { label: "Password", type: "password" },
+        email: { label: "Email", type: "text" },
+        kataSandi: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const { username, password } = credentials as {
-          username: string;
-          password: string;
+        const { email, kataSandi } = credentials as {
+          email: string;
+          kataSandi: string;
         };
 
         const admin = await prisma.admin.findUnique({
-          where: { username },
+          where: { email },
         });
+        console.log(admin);
 
-        if (!admin || admin.password !== password) return null;
+        if (!admin || admin.kataSandi !== kataSandi) return null;
 
         return {
           id: String(admin.id),
-          name: admin.username,
-          email: `${admin.username}@admin.local`, // dummy email agar valid
+          nama: admin.nama,
+          email: `${admin.email}`, // dummy email agar valid
           role: "ADMIN",
         };
       },
@@ -41,20 +42,45 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
 
   callbacks: {
     async jwt({ token, account, user }) {
-      // Saat login pertama kali
       if (account && user) {
         if (account.provider === "google") {
+          let pengguna = await prisma.pengguna.findUnique({
+            where: { email: user.email as string },
+          });
+
+          if (!pengguna) {
+            pengguna = await prisma.pengguna.create({
+              data: {
+                email: user.email as string,
+                nama: user.name || "Pengguna Baru",
+                googleId: account.providerAccountId,
+              },
+            });
+          }
+
+          token.id = pengguna.id;
           token.role = "USER";
+          token.email = pengguna.email;
         } else if ((user as any).role === "ADMIN") {
           token.role = "ADMIN";
+          token.email = (user as any).email;
+          token.sub = (user as any).id;
         }
       }
+
       return token;
     },
 
     async session({ session, token }) {
+      if (token.role === "ADMIN") {
+        session.user.id = token.sub as string;
+      } else if (token.role === "USER") {
+        session.user.id = token.id as string;
+      }
+
       session.user.role = token.role as "ADMIN" | "USER";
       session.user.email = token.email as string;
+
       return session;
     },
   },

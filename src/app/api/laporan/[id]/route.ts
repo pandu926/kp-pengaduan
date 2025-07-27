@@ -1,41 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-// GET - Ambil admin berdasarkan ID
+// GET - Ambil laporan berdasarkan ID
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-
-    const admin = await prisma.admin.findUnique({
+    const laporan = await prisma.laporan.findUnique({
       where: { id: parseInt(id) },
-      select: {
-        id: true,
-        nama: true,
-        email: true,
-        dibuatPada: true,
-      },
     });
 
-    if (!admin) {
+    if (!laporan) {
       return NextResponse.json(
-        { success: false, error: "Admin tidak ditemukan" },
+        { success: false, error: "Laporan tidak ditemukan" },
         { status: 404 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      data: admin,
+      data: laporan,
     });
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: "Gagal mengambil data admin" },
+      { success: false, error: "Gagal mengambil data laporan" },
       { status: 500 }
     );
   } finally {
@@ -43,53 +35,42 @@ export async function GET(
   }
 }
 
-// PUT - Update admin
+// PUT - Update laporan
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const { nama, email, kataSandi } = await request.json();
+    const { bulanLaporan, totalPesanan, totalPendapatan } =
+      await request.json();
 
-    const updateData: any = { nama, email };
+    const updateData: any = {};
+    if (bulanLaporan !== undefined)
+      updateData.bulanLaporan = new Date(bulanLaporan);
+    if (totalPesanan !== undefined) updateData.totalPesanan = totalPesanan;
+    if (totalPendapatan !== undefined)
+      updateData.totalPendapatan = totalPendapatan;
 
-    if (kataSandi) {
-      updateData.kataSandi = await bcrypt.hash(kataSandi, 12);
-    }
-
-    const admin = await prisma.admin.update({
+    const laporan = await prisma.laporan.update({
       where: { id: parseInt(id) },
       data: updateData,
-      select: {
-        id: true,
-        nama: true,
-        email: true,
-        dibuatPada: true,
-      },
     });
 
     return NextResponse.json({
       success: true,
-      data: admin,
+      data: laporan,
     });
   } catch (error: any) {
     if (error.code === "P2025") {
       return NextResponse.json(
-        { success: false, error: "Admin tidak ditemukan" },
+        { success: false, error: "Laporan tidak ditemukan" },
         { status: 404 }
       );
     }
 
-    if (error.code === "P2002") {
-      return NextResponse.json(
-        { success: false, error: "Email sudah terdaftar" },
-        { status: 400 }
-      );
-    }
-
     return NextResponse.json(
-      { success: false, error: "Gagal memperbarui admin" },
+      { success: false, error: "Gagal memperbarui laporan" },
       { status: 500 }
     );
   } finally {
@@ -97,31 +78,31 @@ export async function PUT(
   }
 }
 
-// DELETE - Hapus admin
+// DELETE - Hapus laporan
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    await prisma.admin.delete({
+    await prisma.laporan.delete({
       where: { id: parseInt(id) },
     });
 
     return NextResponse.json({
       success: true,
-      message: "Admin berhasil dihapus",
+      message: "Laporan berhasil dihapus",
     });
   } catch (error: any) {
     if (error.code === "P2025") {
       return NextResponse.json(
-        { success: false, error: "Admin tidak ditemukan" },
+        { success: false, error: "Laporan tidak ditemukan" },
         { status: 404 }
       );
     }
 
     return NextResponse.json(
-      { success: false, error: "Gagal menghapus admin" },
+      { success: false, error: "Gagal menghapus laporan" },
       { status: 500 }
     );
   } finally {

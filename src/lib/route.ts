@@ -1,6 +1,20 @@
-export const PUBLIC_ROUTES = ["/user", "/admin", "/"];
+export const PUBLIC_ROUTES = [
+  "/user",
+  "/admin",
+  "/public",
+  "/public/assets/",
+  "/",
+];
 
-export const ADMIN_ROUTES = ["/admin/dashboard", "/admin/kelola"];
+export const ADMIN_ROUTES = [
+  "/admin/pengguna",
+  "/admin/dashboard",
+  "/admin/laporan",
+  "/admin/layanan",
+  "/admin/portofolio",
+  "/admin/progres",
+  "/admin/pesanan",
+];
 export const USER_ROUTES = ["/user/dashboard", "user/pengaduan"];
 
 export const DEFAULT_REDIRECT = "/dashboard";

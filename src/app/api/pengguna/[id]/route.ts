@@ -1,41 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-// GET - Ambil admin berdasarkan ID
+// GET - Ambil pengguna berdasarkan ID
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-
-    const admin = await prisma.admin.findUnique({
+    const pengguna = await prisma.pengguna.findUnique({
       where: { id: parseInt(id) },
-      select: {
-        id: true,
-        nama: true,
-        email: true,
-        dibuatPada: true,
+      include: {
+        pesanan: {
+          include: {
+            layanan: true,
+            progres: true,
+          },
+        },
       },
     });
 
-    if (!admin) {
+    if (!pengguna) {
       return NextResponse.json(
-        { success: false, error: "Admin tidak ditemukan" },
+        { success: false, error: "Pengguna tidak ditemukan" },
         { status: 404 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      data: admin,
+      data: pengguna,
     });
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: "Gagal mengambil data admin" },
+      { success: false, error: "Gagal mengambil data pengguna" },
       { status: 500 }
     );
   } finally {
@@ -43,40 +43,28 @@ export async function GET(
   }
 }
 
-// PUT - Update admin
+// PUT - Update pengguna
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const { nama, email, kataSandi } = await request.json();
+    const { nama, email } = await request.json();
 
-    const updateData: any = { nama, email };
-
-    if (kataSandi) {
-      updateData.kataSandi = await bcrypt.hash(kataSandi, 12);
-    }
-
-    const admin = await prisma.admin.update({
+    const pengguna = await prisma.pengguna.update({
       where: { id: parseInt(id) },
-      data: updateData,
-      select: {
-        id: true,
-        nama: true,
-        email: true,
-        dibuatPada: true,
-      },
+      data: { nama, email },
     });
 
     return NextResponse.json({
       success: true,
-      data: admin,
+      data: pengguna,
     });
   } catch (error: any) {
     if (error.code === "P2025") {
       return NextResponse.json(
-        { success: false, error: "Admin tidak ditemukan" },
+        { success: false, error: "Pengguna tidak ditemukan" },
         { status: 404 }
       );
     }
@@ -89,7 +77,7 @@ export async function PUT(
     }
 
     return NextResponse.json(
-      { success: false, error: "Gagal memperbarui admin" },
+      { success: false, error: "Gagal memperbarui pengguna" },
       { status: 500 }
     );
   } finally {
@@ -97,31 +85,31 @@ export async function PUT(
   }
 }
 
-// DELETE - Hapus admin
+// DELETE - Hapus pengguna
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    await prisma.admin.delete({
+    await prisma.pengguna.delete({
       where: { id: parseInt(id) },
     });
 
     return NextResponse.json({
       success: true,
-      message: "Admin berhasil dihapus",
+      message: "Pengguna berhasil dihapus",
     });
   } catch (error: any) {
     if (error.code === "P2025") {
       return NextResponse.json(
-        { success: false, error: "Admin tidak ditemukan" },
+        { success: false, error: "Pengguna tidak ditemukan" },
         { status: 404 }
       );
     }
 
     return NextResponse.json(
-      { success: false, error: "Gagal menghapus admin" },
+      { success: false, error: "Gagal menghapus pengguna" },
       { status: 500 }
     );
   } finally {

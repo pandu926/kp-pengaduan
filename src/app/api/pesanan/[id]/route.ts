@@ -1,41 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs";
+import { PrismaClient, StatusPesanan } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-// GET - Ambil admin berdasarkan ID
+// GET - Ambil pesanan berdasarkan ID
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-
-    const admin = await prisma.admin.findUnique({
+    const pesanan = await prisma.pesanan.findUnique({
       where: { id: parseInt(id) },
-      select: {
-        id: true,
-        nama: true,
-        email: true,
-        dibuatPada: true,
+      include: {
+        pengguna: true,
+        layanan: true,
+        progres: {
+          orderBy: {
+            diperbaruiPada: "desc",
+          },
+        },
       },
     });
 
-    if (!admin) {
+    if (!pesanan) {
       return NextResponse.json(
-        { success: false, error: "Admin tidak ditemukan" },
+        { success: false, error: "Pesanan tidak ditemukan" },
         { status: 404 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      data: admin,
+      data: pesanan,
     });
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: "Gagal mengambil data admin" },
+      { success: false, error: "Gagal mengambil data pesanan" },
       { status: 500 }
     );
   } finally {
@@ -43,53 +44,49 @@ export async function GET(
   }
 }
 
-// PUT - Update admin
+// PUT - Update pesanan
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const { nama, email, kataSandi } = await request.json();
+    const { layananId, hargaDisepakati, status, lokasi, catatan } =
+      await request.json();
 
-    const updateData: any = { nama, email };
+    const updateData: any = {};
+    if (layananId !== undefined)
+      updateData.layananId = layananId ? parseInt(layananId) : null;
+    if (hargaDisepakati !== undefined)
+      updateData.hargaDisepakati = hargaDisepakati;
+    if (status !== undefined) updateData.status = status as StatusPesanan;
+    if (lokasi !== undefined) updateData.lokasi = lokasi;
+    if (catatan !== undefined) updateData.catatan = catatan;
 
-    if (kataSandi) {
-      updateData.kataSandi = await bcrypt.hash(kataSandi, 12);
-    }
-
-    const admin = await prisma.admin.update({
+    const pesanan = await prisma.pesanan.update({
       where: { id: parseInt(id) },
       data: updateData,
-      select: {
-        id: true,
-        nama: true,
-        email: true,
-        dibuatPada: true,
+      include: {
+        pengguna: true,
+        layanan: true,
+        progres: true,
       },
     });
 
     return NextResponse.json({
       success: true,
-      data: admin,
+      data: pesanan,
     });
   } catch (error: any) {
     if (error.code === "P2025") {
       return NextResponse.json(
-        { success: false, error: "Admin tidak ditemukan" },
+        { success: false, error: "Pesanan tidak ditemukan" },
         { status: 404 }
       );
     }
 
-    if (error.code === "P2002") {
-      return NextResponse.json(
-        { success: false, error: "Email sudah terdaftar" },
-        { status: 400 }
-      );
-    }
-
     return NextResponse.json(
-      { success: false, error: "Gagal memperbarui admin" },
+      { success: false, error: "Gagal memperbarui pesanan" },
       { status: 500 }
     );
   } finally {
@@ -97,31 +94,31 @@ export async function PUT(
   }
 }
 
-// DELETE - Hapus admin
+// DELETE - Hapus pesanan
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    await prisma.admin.delete({
+    await prisma.pesanan.delete({
       where: { id: parseInt(id) },
     });
 
     return NextResponse.json({
       success: true,
-      message: "Admin berhasil dihapus",
+      message: "Pesanan berhasil dihapus",
     });
   } catch (error: any) {
     if (error.code === "P2025") {
       return NextResponse.json(
-        { success: false, error: "Admin tidak ditemukan" },
+        { success: false, error: "Pesanan tidak ditemukan" },
         { status: 404 }
       );
     }
 
     return NextResponse.json(
-      { success: false, error: "Gagal menghapus admin" },
+      { success: false, error: "Gagal menghapus pesanan" },
       { status: 500 }
     );
   } finally {
