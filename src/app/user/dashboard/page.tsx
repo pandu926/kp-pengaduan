@@ -1,5 +1,4 @@
 "use client";
-
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import axios from "axios";
@@ -23,80 +22,532 @@ interface Pesanan {
   }[];
 }
 
+const StatusBadge = ({ status }: { status: string }) => {
+  const getStatusStyle = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case "selesai":
+        return "bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 border border-emerald-200 shadow-sm";
+      case "dalam_proses":
+      case "proses":
+        return "bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200 shadow-sm";
+      case "menunggu":
+        return "bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700 border border-amber-200 shadow-sm";
+      case "dibatalkan":
+        return "bg-gradient-to-r from-gray-50 to-slate-50 text-gray-700 border border-gray-200 shadow-sm";
+      default:
+        return "bg-gradient-to-r from-gray-50 to-slate-50 text-gray-700 border border-gray-200 shadow-sm";
+    }
+  };
+
+  const formatStatus = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case "dalam_proses":
+        return "Dalam Proses";
+      case "selesai":
+        return "Selesai";
+      case "menunggu":
+        return "Menunggu";
+      case "dibatalkan":
+        return "Dibatalkan";
+      default:
+        return status;
+    }
+  };
+
+  return (
+    <div
+      className={`inline-flex items-center px-3 py-1.5 rounded-xl text-sm font-semibold backdrop-blur-sm ${getStatusStyle(
+        status
+      )}`}
+    >
+      <div className="w-2 h-2 rounded-full bg-current mr-2 opacity-75"></div>
+      {formatStatus(status)}
+    </div>
+  );
+};
+
+const ProgressBar = ({ progress }: { progress: number }) => (
+  <div className="w-full space-y-2">
+    <div className="flex justify-between items-center">
+      <span className="text-sm font-medium text-gray-700">
+        Progress Pengerjaan
+      </span>
+      <span className="text-sm font-bold text-gray-900 bg-gray-100 px-2 py-1 rounded-lg">
+        {progress}%
+      </span>
+    </div>
+    <div className="relative">
+      <div className="w-full bg-gradient-to-r from-gray-100 to-gray-200 rounded-full h-3 shadow-inner">
+        <div
+          className="bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 h-3 rounded-full transition-all duration-700 ease-out shadow-sm relative overflow-hidden"
+          style={{ width: `${Math.min(progress, 100)}%` }}
+        >
+          <div className="absolute inset-0 bg-white opacity-30 animate-pulse rounded-full"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const EmptyState = () => (
+  <div className="text-center py-20">
+    <div className="relative mx-auto mb-8">
+      <div className="w-24 h-24 mx-auto bg-gradient-to-br from-blue-50 to-indigo-100 rounded-3xl flex items-center justify-center shadow-lg">
+        <svg
+          className="w-10 h-10 text-blue-500"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+          />
+        </svg>
+      </div>
+      <div className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-r from-pink-400 to-red-400 rounded-full shadow-lg"></div>
+    </div>
+    <h3 className="text-2xl font-bold text-gray-900 mb-3">Belum Ada Pesanan</h3>
+    <p className="text-gray-600 max-w-md mx-auto mb-8 leading-relaxed">
+      Mulai perjalanan Anda dengan memesan layanan yang tersedia. Riwayat
+      pesanan akan muncul di sini.
+    </p>
+    <a
+      href="/user/pemesanan"
+      className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
+    >
+      <svg
+        className="w-5 h-5 mr-2"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+        />
+      </svg>
+      Buat Pesanan Pertama
+    </a>
+  </div>
+);
+
+const LoadingState = () => (
+  <div className="space-y-6">
+    {[1, 2, 3].map((i) => (
+      <div
+        key={i}
+        className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm animate-pulse"
+      >
+        <div className="flex items-center gap-6 mb-6">
+          <div className="w-20 h-20 bg-gradient-to-br from-gray-200 to-gray-300 rounded-2xl"></div>
+          <div className="flex-1 space-y-3">
+            <div className="h-6 bg-gray-200 rounded-lg w-3/4"></div>
+            <div className="h-4 bg-gray-200 rounded-lg w-1/2"></div>
+            <div className="h-4 bg-gray-200 rounded-lg w-1/3"></div>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="h-3 bg-gray-200 rounded-full w-full"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="h-4 bg-gray-200 rounded-lg"></div>
+            <div className="h-4 bg-gray-200 rounded-lg"></div>
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
 export default function DashboardPage() {
   const { data: session, status: authStatus } = useSession();
-  console.log(session);
   const [pesanan, setPesanan] = useState<Pesanan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchPesanan = async () => {
       if (session?.user?.id) {
-        const res = await axios.get(`/api/pesanan?userId=${session.user.id}`);
-        setPesanan(res.data);
+        try {
+          const res = await axios.get(
+            `/api/pesanan?penggunaId=${session.user.id}`
+          );
+          const data = Array.isArray(res.data.data) ? res.data.data : [];
+          setPesanan(data);
+          setError(null);
+        } catch (error) {
+          console.error("Error fetching pesanan:", error);
+          setError("Gagal memuat data pesanan");
+          setPesanan([]);
+        } finally {
+          setLoading(false);
+        }
+      } else if (authStatus !== "loading") {
         setLoading(false);
       }
     };
     fetchPesanan();
-  }, [session]);
+  }, [session, authStatus]);
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold text-blue-700 mb-6">
-        🧾 Riwayat Pemesanan Anda
-      </h1>
-
-      {loading ? (
-        <p className="text-gray-500">Memuat data...</p>
-      ) : pesanan.length === 0 ? (
-        <p className="text-gray-500">Belum ada pesanan.</p>
-      ) : (
-        <div className="space-y-6">
-          {pesanan.map((p) => (
-            <div
-              key={p.id}
-              className="bg-white rounded-xl shadow-md p-5 border border-blue-100"
-            >
-              <div className="flex items-center gap-4">
-                {p.layanan?.urlGambar && (
-                  <img
-                    src={p.layanan.urlGambar}
-                    alt={p.layanan.nama}
-                    className="w-16 h-16 rounded-md object-cover"
-                  />
-                )}
-                <div>
-                  <h2 className="text-lg font-semibold text-blue-600">
-                    {p.layanan?.nama ?? "Layanan Tidak Diketahui"}
-                  </h2>
-                  <p className="text-sm text-gray-500">
-                    Status:{" "}
-                    <span className="font-medium text-black">{p.status}</span>
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-1 text-sm text-gray-700">
-                <p>💰 Harga: Rp {Number(p.hargaDisepakati).toLocaleString()}</p>
-                <p>📍 Lokasi: {p.lokasi ?? "-"}</p>
-                <p>
-                  📆 Tanggal: {new Date(p.tanggalPesan).toLocaleDateString()}
-                </p>
-                <p>📝 Catatan: {p.catatan ?? "-"}</p>
-                <p>📈 Progres: {p.progres.at(-1)?.persenProgres ?? 0}%</p>
-              </div>
-
-              {p.progres.at(-1)?.urlDokumentasi && (
-                <img
-                  src={p.progres.at(-1)?.urlDokumentasi}
-                  alt="Progres"
-                  className="mt-4 w-full rounded-md border border-gray-200"
-                />
-              )}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40">
+      <div className="max-w-6xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
+        {/* Modern Header */}
+        <div className="mb-12 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-1 h-8 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-full"></div>
+              <h1 className="text-xl md:text-4xl font-black text-gray-900 tracking-tight">
+                Riwayat Pesanan
+              </h1>
             </div>
-          ))}
+            <p className="text-md md:text-lg text-gray-600 font-medium">
+              Pantau progres dan kelola semua pesanan layanan Anda
+            </p>
+            {pesanan.length > 0 && (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                <span>{pesanan.length} pesanan total</span>
+              </div>
+            )}
+          </div>
+
+          <a
+            href="/user/pemesanan"
+            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-2xl hover:shadow-xl hover:shadow-blue-500/25 transform hover:-translate-y-1 transition-all duration-300 group"
+          >
+            <svg
+              className="w-5 h-5 mr-2 group-hover:rotate-90 transition-transform duration-300"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+              />
+            </svg>
+            Buat Pesanan Baru
+          </a>
         </div>
-      )}
+
+        {/* Content */}
+        {loading ? (
+          <LoadingState />
+        ) : error ? (
+          <div className="text-center py-20">
+            <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-red-50 to-pink-100 rounded-3xl flex items-center justify-center shadow-lg">
+              <svg
+                className="w-10 h-10 text-red-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                />
+              </svg>
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-3">
+              Terjadi Kesalahan
+            </h3>
+            <p className="text-gray-600 max-w-md mx-auto mb-8">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
+            >
+              <svg
+                className="w-5 h-5 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              Muat Ulang
+            </button>
+          </div>
+        ) : !Array.isArray(pesanan) || pesanan.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <div className="space-y-8">
+            {pesanan.map((p, index) => {
+              const latestProgress = p.progres.at(-1);
+              const progress = latestProgress?.persenProgres ?? 0;
+
+              return (
+                <div
+                  key={p.id}
+                  className="group bg-white rounded-3xl border border-gray-100 hover:border-blue-200 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/10 transform hover:-translate-y-1"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  {/* Card Header */}
+                  <div className="p-8 pb-6">
+                    <div className="flex items-start gap-6">
+                      {p.layanan?.urlGambar ? (
+                        <div className="hidden md:relative md:overflow-hidden md:rounded-2xl md:w-24 md:h-24 md:flex-shrink-0 md:ring-4 md:ring-gray-100 group-hover:md:ring-blue-100 transition-all duration-300">
+                          <img
+                            src={p.layanan.urlGambar}
+                            alt={p.layanan.nama}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                        </div>
+                      ) : (
+                        <div className="hidden md:w-24 md:h-24 md:bg-gradient-to-br md:from-blue-100 md:via-indigo-100 md:to-purple-100 md:rounded-2xl md:flex md:items-center md:justify-center md:flex-shrink-0 md:ring-4 md:ring-gray-100 group-hover:md:ring-blue-100 transition-all duration-300">
+                          <svg
+                            className="w-10 h-10 text-blue-500"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={1.5}
+                              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                            />
+                          </svg>
+                        </div>
+                      )}
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row capitalize sm:items-start sm:justify-between gap-4 mb-4">
+                          <div className="min-w-0">
+                            <h2 className="text-2xl font-bold text-gray-900 truncate mb-2">
+                              {p.layanan?.nama ?? "Layanan Tidak Diketahui"}
+                            </h2>
+                            <div className="flex items-center gap-3">
+                              <div className="text-lg md:text-3xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                                Rp{" "}
+                                {Number(p.hargaDisepakati).toLocaleString(
+                                  "id-ID"
+                                )}
+                              </div>
+                              <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                                #{p.id.toString().padStart(4, "0")}
+                              </div>
+                            </div>
+                          </div>
+                          <StatusBadge status={p.status} />
+                        </div>
+
+                        <div className="flex items-center gap-2 text-sm text-gray-600 mb-6">
+                          <svg
+                            className="w-4 h-4 text-gray-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M8 7V3a1 1 0 011-1h6a1 1 0 011 1v4m-6 0v1m6-1v1M6 7h12a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V9a2 2 0 012-2z"
+                            />
+                          </svg>
+                          <span>
+                            Dipesan pada{" "}
+                            {new Date(p.tanggalPesan).toLocaleDateString(
+                              "id-ID",
+                              {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              }
+                            )}
+                          </span>
+                        </div>
+
+                        <ProgressBar progress={progress} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Details Grid */}
+                  <div className="px-8 pb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <div className="flex items-start gap-3 p-4 bg-gradient-to-r from-gray-50 to-slate-50 rounded-2xl">
+                          <div className="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <svg
+                              className="w-4 h-4 text-blue-600"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                              />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                              />
+                            </svg>
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-gray-600 mb-1">
+                              Lokasi Pengerjaan
+                            </div>
+                            <div className="text-gray-900 font-semibold">
+                              {p.lokasi || "Tidak ditentukan"}
+                            </div>
+                          </div>
+                        </div>
+
+                        {p.catatan && (
+                          <div className="flex items-start gap-3 p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl">
+                            <div className="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                              <svg
+                                className="w-4 h-4 text-amber-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                />
+                              </svg>
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-gray-600 mb-1">
+                                Catatan Khusus
+                              </div>
+                              <div className="text-gray-900 font-medium leading-relaxed">
+                                {p.catatan}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-4">
+                        {latestProgress?.keterangan && (
+                          <div className="flex items-start gap-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl">
+                            <div className="w-8 h-8 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                              <svg
+                                className="w-4 h-4 text-green-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
+                              </svg>
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-gray-600 mb-1">
+                                Update Terbaru
+                              </div>
+                              <div className="text-gray-900 font-medium leading-relaxed">
+                                {latestProgress.keterangan}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {latestProgress?.diperbaruiPada && (
+                          <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl">
+                            <div className="w-8 h-8 bg-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                              <svg
+                                className="w-4 h-4 text-indigo-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
+                              </svg>
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-gray-600 mb-1">
+                                Terakhir Diperbarui
+                              </div>
+                              <div className="text-gray-900 font-semibold">
+                                {new Date(
+                                  latestProgress.diperbaruiPada
+                                ).toLocaleDateString("id-ID", {
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Documentation Image */}
+                  {latestProgress?.urlDokumentasi && (
+                    <div className="px-8 pb-8">
+                      <div className="border-t border-gray-100 pt-6">
+                        <div className="text-sm font-medium text-gray-600 mb-4 flex items-center gap-2">
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                            />
+                          </svg>
+                          Dokumentasi Progress
+                        </div>
+                        <div className="relative overflow-hidden rounded-2xl bg-gray-50 ring-1 ring-gray-200 group-hover:ring-blue-200 transition-all duration-300">
+                          <img
+                            src={latestProgress.urlDokumentasi}
+                            alt="Dokumentasi Progress"
+                            className="w-full h-auto object-cover max-h-80 group-hover:scale-105 transition-transform duration-500"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

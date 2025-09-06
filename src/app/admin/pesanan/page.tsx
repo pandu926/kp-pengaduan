@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { PlusIcon } from "@heroicons/react/24/outline";
+import { useState, useEffect, useMemo } from "react";
+import { PlusIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import AdminLayout from "@/components/admin/Layout/AdminLayout";
 import Table from "@/components/admin/Common/Table";
 import Modal from "@/components/admin/Common/Modal";
@@ -10,12 +10,20 @@ import Card from "@/components/admin/Common/Card";
 import PesananForm from "@/components/admin/Forms/PesananForm";
 import { Pesanan, TableColumn, StatusPesanan } from "@/lib/types";
 import { formatDate, formatCurrency } from "@/lib/utils";
+import axios from "axios";
+import { useRouter } from "next/navigation";
 
 export default function PesananPage() {
   const [pesananList, setPesananList] = useState<Pesanan[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPesanan, setEditingPesanan] = useState<Pesanan | null>(null);
 
+  // Search, sort, and pagination states
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortStatus, setSortStatus] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const router = useRouter();
   const fetchPesanan = async () => {
     try {
       const res = await fetch("/api/pesanan");
@@ -30,8 +38,36 @@ export default function PesananPage() {
     fetchPesanan();
   }, []);
 
+  // Filter and sort data
+  const filteredAndSortedData = useMemo(() => {
+    let filtered = pesananList.filter((pesanan) => {
+      const matchesSearch = pesanan.namaPelanggan
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+      const matchesStatus =
+        sortStatus === "all" || pesanan.status === sortStatus;
+      return matchesSearch && matchesStatus;
+    });
+
+    return filtered;
+  }, [pesananList, searchTerm, sortStatus]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage);
+  const paginatedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredAndSortedData.slice(startIndex, endIndex);
+  }, [filteredAndSortedData, currentPage, itemsPerPage]);
+
+  // Reset page when search or filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, sortStatus]);
+
   const columns: TableColumn[] = [
     { key: "id", label: "ID" },
+    { key: "namaPelanggan", label: "Nama Pelanggan" },
     { key: "penggunaId", label: "ID Pengguna" },
     { key: "layananId", label: "ID Layanan" },
     {
@@ -47,9 +83,9 @@ export default function PesananPage() {
           className={`px-2 py-1 rounded-full text-xs font-medium ${
             value === StatusPesanan.SELESAI
               ? "bg-green-100 text-green-800"
-              : value === StatusPesanan.DIPROSES
+              : value === StatusPesanan.PENGERJAAN
               ? "bg-blue-100 text-blue-800"
-              : value === StatusPesanan.MENUNGGU
+              : value === StatusPesanan.PENGAJUAN
               ? "bg-yellow-100 text-yellow-800"
               : "bg-red-100 text-red-800"
           }`}
@@ -91,29 +127,36 @@ export default function PesananPage() {
   const handleSubmit = async (formData: Partial<Pesanan>) => {
     try {
       if (editingPesanan) {
-        await fetch(`/api/pesanan/${editingPesanan.id}`, {
-          method: "PUT",
+        await axios.put(`/api/pesanan/${editingPesanan.id}`, formData, {
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
         });
       } else {
-        await fetch(`/api/pesanan`, {
-          method: "POST",
+        await axios.post(`/api/pesanan`, formData, {
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
         });
       }
+
       await fetchPesanan();
       setIsModalOpen(false);
     } catch (err) {
-      console.error("Gagal menyimpan pesanan", err);
+      console.error("❌ Gagal menyimpan pesanan:", err);
+      if (axios.isAxiosError(err)) {
+        console.error("Detail error:", err.response?.data || err.message);
+      }
     }
   };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+  function handleRowClick(item: any): void {
+    router.push(`/admin/pesanan/${item.id}`);
+  }
 
   return (
     <AdminLayout title="Manajemen Pesanan">
       <Card>
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <div>
             <h3 className="text-lg font-semibold">Daftar Pesanan</h3>
             <p className="text-gray-600">Kelola pesanan dari pengguna</p>
@@ -127,12 +170,90 @@ export default function PesananPage() {
           </Button>
         </div>
 
+        {/* Search and Filter Controls */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          {/* Search */}
+          <div className="relative flex-1">
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Cari berdasarkan nama pelanggan..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Status Filter */}
+          <div className="sm:w-48">
+            <select
+              value={sortStatus}
+              onChange={(e) => setSortStatus(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">Semua Status</option>
+              <option value={StatusPesanan.PENGAJUAN}>Pengajuan</option>
+              <option value={StatusPesanan.PENGERJAAN}>Pengerjaan</option>
+              <option value={StatusPesanan.SELESAI}>Selesai</option>
+              <option value={StatusPesanan.DIBATALKAN}>Dibatalkan</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Results Info */}
+        <div className="flex justify-between items-center mb-4">
+          <p className="text-sm text-gray-600">
+            Menampilkan {paginatedData.length} dari{" "}
+            {filteredAndSortedData.length} pesanan
+          </p>
+        </div>
+
         <Table
           columns={columns}
-          data={pesananList}
+          data={paginatedData}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          onRowClick={handleRowClick}
         />
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="mt-6 flex justify-center">
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Sebelumnya
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                (page) => (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`px-3 py-2 text-sm font-medium border rounded-md ${
+                      currentPage === page
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "text-gray-700 bg-white border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                )
+              )}
+
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Selanjutnya
+              </button>
+            </div>
+          </div>
+        )}
       </Card>
 
       <Modal

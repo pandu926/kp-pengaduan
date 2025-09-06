@@ -17,7 +17,7 @@ model Admin {
 
 model Pengguna {
   id         Int      @id @default(autoincrement())          // ID Pengguna
-  nama       String                                           // Nama pengguna
+  nama       String
   email      String   @unique                                // Email pengguna
   googleId   String   @unique                                // ID Google OAuth
   dibuatPada DateTime @default(now())                        // Tanggal dibuat
@@ -28,21 +28,22 @@ model Pengguna {
 model Layanan {
   id          Int      @id @default(autoincrement())          // ID Layanan
   nama        String                                           // Nama layanan
-  deskripsi   String?                                          // Deskripsi layanan
-  urlGambar   String?                                          // Gambar layanan
+  deskripsi   String?                                          // Deskripsi layanan        
   dibuatPada  DateTime @default(now())                        // Tanggal dibuat
   pesanan     Pesanan[]                                        // Relasi ke pesanan
 }
 
 model Pesanan {
   id               Int           @id @default(autoincrement())       // ID Pesanan
-  pengguna         Pengguna      @relation(fields: [penggunaId], references: [id], onDelete: Cascade)
-  penggunaId       Int                                             // ID pengguna pemesan
+  pengguna         Pengguna?      @relation(fields: [penggunaId], references: [id], onDelete: Cascade)
+  namaPelanggan    String        @default("tes")
+  penggunaId       Int?                                            // ID pengguna pemesan
   layanan          Layanan?      @relation(fields: [layananId], references: [id])
   layananId        Int?                                            // Layanan yang dipilih
   hargaDisepakati  Decimal?                                        // Harga yang disepakati
   tanggalPesan     DateTime                                         // Tanggal pemesanan
-  status           StatusPesanan @default(MENUNGGU)                 // Status pesanan
+  nomerHp          String
+  status           StatusPesanan @default(PENGAJUAN)                 // Status pesanan
   lokasi           String?                                          // Lokasi proyek
   catatan          String?                                          // Catatan tambahan
   dibuatPada       DateTime      @default(now())                    // Tanggal dibuat
@@ -59,26 +60,12 @@ model ProgresPesanan {
   diperbaruiPada   DateTime @default(now())                      // Tanggal diperbarui
 }
 
-model Portofolio {
-  id              Int      @id @default(autoincrement())           // ID Portofolio
-  judul           String                                           // Judul proyek
-  deskripsi       String?                                          // Deskripsi
-  urlGambar       String?                                          // URL gambar
-  tanggalSelesai  DateTime?                                        // Tanggal selesai
-  dibuatPada      DateTime @default(now())                        // Tanggal dibuat
-}
 
-model Laporan {
-  id              Int      @id @default(autoincrement())           // ID Laporan
-  bulanLaporan    DateTime                                         // Bulan laporan
-  totalPesanan    Int?                                             // Jumlah pesanan
-  totalPendapatan Decimal?                 // Total pendapatan
-  dibuatPada      DateTime @default(now())                        // Tanggal dibuat
-}
 
 enum StatusPesanan {
-  MENUNGGU
-  DIPROSES
+  PENGAJUAN
+  SURVEI
+  PENGERJAAN
   SELESAI
   DIBATALKAN
 }

@@ -3,10 +3,10 @@
 import Image from "next/image";
 
 const images = [
-  "/gallery/1.png", // kiri besar
-  "/gallery/2.png", // kanan atas
-  "/gallery/3.png", // kanan bawah kiri
-  "/gallery/4.png", // kanan bawah kanan
+  "/assets/gallery/1.jpg", // kiri besar
+  "/assets/gallery/2.jpg", // kanan atas
+  "/assets/gallery/3.jpg", // kanan bawah kiri
+  "/assets/gallery/4.jpg", // kanan bawah kanan
 ];
 
 export default function Gallery() {

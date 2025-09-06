@@ -1,84 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
+import { StatusPesanan } from "@/lib/types"; // enum status pesanan-mu
 
 const prisma = new PrismaClient();
 
-// GET - Ambil semua laporan
+// GET - Ambil laporan dari pesanan selesai dalam rentang tanggal
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const tahun = searchParams.get("tahun");
-    const bulan = searchParams.get("bulan");
+    const start = searchParams.get("start"); // format: YYYY-MM-DD
+    const end = searchParams.get("end"); // format: YYYY-MM-DD
 
-    let where: any = {};
-    if (tahun && bulan) {
-      const startDate = new Date(parseInt(tahun), parseInt(bulan) - 1, 1);
-      const endDate = new Date(parseInt(tahun), parseInt(bulan), 0);
-      where.bulanLaporan = {
-        gte: startDate,
-        lte: endDate,
-      };
-    } else if (tahun) {
-      const startDate = new Date(parseInt(tahun), 0, 1);
-      const endDate = new Date(parseInt(tahun), 11, 31);
-      where.bulanLaporan = {
-        gte: startDate,
-        lte: endDate,
-      };
+    if (!start || !end) {
+      return NextResponse.json(
+        { success: false, error: "Tanggal awal dan akhir harus diisi" },
+        { status: 400 }
+      );
     }
 
-    const laporan = await prisma.laporan.findMany({
-      where,
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    endDate.setHours(23, 59, 59, 999); // supaya tanggal akhir termasuk seluruh hari
+
+    const pesanan = await prisma.pesanan.findMany({
+      where: {
+        status: StatusPesanan.SELESAI,
+        tanggalPesan: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
       orderBy: {
-        bulanLaporan: "desc",
+        tanggalPesan: "asc",
+      },
+      include: {
+        layanan: true,
       },
     });
 
     return NextResponse.json({
       success: true,
-      data: laporan,
+      data: pesanan,
     });
   } catch (error) {
+    console.error(error);
     return NextResponse.json(
       { success: false, error: "Gagal mengambil data laporan" },
-      { status: 500 }
-    );
-  } finally {
-    await prisma.$disconnect();
-  }
-}
-
-// POST - Buat laporan baru
-export async function POST(request: NextRequest) {
-  try {
-    const { bulanLaporan, totalPesanan, totalPendapatan } =
-      await request.json();
-
-    if (!bulanLaporan) {
-      return NextResponse.json(
-        { success: false, error: "Bulan laporan diperlukan" },
-        { status: 400 }
-      );
-    }
-
-    const laporan = await prisma.laporan.create({
-      data: {
-        bulanLaporan: new Date(bulanLaporan),
-        totalPesanan,
-        totalPendapatan,
-      },
-    });
-
-    return NextResponse.json(
-      {
-        success: true,
-        data: laporan,
-      },
-      { status: 201 }
-    );
-  } catch (error) {
-    return NextResponse.json(
-      { success: false, error: "Gagal membuat laporan" },
       { status: 500 }
     );
   } finally {

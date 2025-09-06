@@ -7,124 +7,184 @@ import Table from "@/components/admin/Common/Table";
 import Modal from "@/components/admin/Common/Modal";
 import Button from "@/components/admin/Common/Button";
 import Card from "@/components/admin/Common/Card";
-import LaporanForm from "@/components/admin/Forms/LaporanForm";
-import { Laporan, TableColumn } from "@/lib/types";
-import { formatDate, formatCurrency } from "@/lib/utils";
 import axios from "axios";
+import { formatDate, formatCurrency } from "@/lib/utils";
+import { TableColumn } from "@/lib/types";
+
+interface PesananLaporan {
+  id: number;
+  namaPelanggan: string;
+  layanan: string;
+  hargaDisepakati: number;
+  tanggalPesan: string;
+}
 
 export default function LaporanPage() {
-  const [laporanList, setLaporanList] = useState<Laporan[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingLaporan, setEditingLaporan] = useState<Laporan | null>(null);
+  const [laporanList, setLaporanList] = useState<PesananLaporan[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [totalPendapatan, setTotalPendapatan] = useState(0);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (startDate && endDate) {
+      fetchData();
+    }
+  }, [startDate, endDate]);
 
   const fetchData = async () => {
     try {
-      const res = await axios.get("/api/laporan");
-      setLaporanList(res.data.data || []);
+      setLoading(true);
+      const res = await axios.get(
+        `/api/laporan?start=${startDate}&end=${endDate}`
+      );
+      console.log(res);
+      const data: PesananLaporan[] = res.data.data.map((p: any) => ({
+        id: p.id,
+        namaPelanggan: p.namaPelanggan,
+        layanan: p.layanan?.nama || "-",
+        hargaDisepakati: p.hargaDisepakati || 0,
+        tanggalPesan: p.tanggalPesan,
+      }));
+      setLaporanList(data);
+      setTotalPendapatan(
+        data.reduce((sum, p) => sum + (p.hargaDisepakati || 0), 0)
+      );
     } catch (err) {
       console.error("Gagal mengambil data laporan:", err);
+    } finally {
+      setLoading(false);
     }
   };
-
+  console.log(laporanList);
   const columns: TableColumn[] = [
     { key: "id", label: "ID" },
+    { key: "namaPelanggan", label: "Nama Pelanggan" },
+    { key: "layanan", label: "Layanan" },
     {
-      key: "bulanLaporan",
-      label: "Bulan Laporan",
-      render: (value) => {
-        const date = new Date(value); // langsung pakai value
-        return date.toLocaleDateString("id-ID", {
-          year: "numeric",
-          month: "long",
-        });
-      },
-    },
-    { key: "totalPesanan", label: "Total Pesanan" },
-    {
-      key: "totalPendapatan",
-      label: "Total Pendapatan",
-      render: (value) => (value ? formatCurrency(value) : "-"),
+      key: "hargaDisepakati",
+      label: "Harga",
+      render: (value) => formatCurrency(value),
     },
     {
-      key: "dibuatPada",
-      label: "Dibuat",
+      key: "tanggalPesan",
+      label: "Tanggal Pesan",
       render: (value) => formatDate(value),
     },
   ];
 
-  const handleAdd = () => {
-    setEditingLaporan(null);
-    setIsModalOpen(true);
-  };
+  const handleCetak = () => {
+    const newWindow = window.open("", "_blank");
+    if (newWindow) {
+      newWindow.document.write(`
+      <html>
+        <head>
+          <title>Laporan Pendapatan CV Arfilla Jaya Putra</title>
+          <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+        </head>
+        <body class="p-8 font-sans">
+          <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold">Laporan Pendapatan</h1>
+            <h2 class="text-xl font-medium mt-2">CV Arfilla Jaya Putra</h2>
+            <p class="text-gray-600 mt-1">Periode: ${formatDate(
+              startDate
+            )} - ${formatDate(endDate)}</p>
+          </div>
 
-  const handleEdit = (laporan: Laporan) => {
-    setEditingLaporan(laporan);
-    setIsModalOpen(true);
-  };
+          <table class="min-w-full border-collapse border border-gray-300 shadow-md">
+            <thead class="bg-blue-200">
+              <tr>
+                <th class="border border-gray-300 px-4 py-2">No</th>
+                <th class="border border-gray-300 px-4 py-2">Tanggal</th>
+                <th class="border border-gray-300 px-4 py-2">Pelanggan</th>
+                <th class="border border-gray-300 px-4 py-2">Layanan</th>
+                <th class="border border-gray-300 px-4 py-2 text-right">Harga</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${laporanList
+                .map(
+                  (p, i) => `
+                <tr class="${i % 2 === 0 ? "bg-gray-50" : "bg-white"}">
+                  <td class="border border-gray-300 px-4 py-2">${i + 1}</td>
+                  <td class="border border-gray-300 px-4 py-2">${formatDate(
+                    p.tanggalPesan
+                  )}</td>
+                  <td class="border border-gray-300 px-4 py-2">${
+                    p.namaPelanggan
+                  }</td>
+                  <td class="border border-gray-300 px-4 py-2">${p.layanan}</td>
+                  <td class="border border-gray-300 px-4 py-2 text-right">${formatCurrency(
+                    p.hargaDisepakati
+                  )}</td>
+                </tr>
+              `
+                )
+                .join("")}
+            </tbody>
+            <tfoot>
+              <tr class="bg-gray-200 font-semibold">
+                <td colspan="4" class="border border-gray-300 px-4 py-2 text-right">Total Pendapatan</td>
+                <td class="border border-gray-300 px-4 py-2 text-right">${formatCurrency(
+                  totalPendapatan
+                )}</td>
+              </tr>
+            </tfoot>
+          </table>
 
-  const handleDelete = async (id: number) => {
-    if (confirm("Yakin ingin menghapus laporan ini?")) {
-      try {
-        await axios.delete(`/api/laporan/${id}`);
-        fetchData(); // Refresh data
-      } catch (err) {
-        console.error("Gagal menghapus laporan:", err);
-      }
+          <div class="mt-6 text-center text-gray-500 text-sm">
+            Generated by Sistem Laporan CV Arfilla Jaya Putra
+          </div>
+
+          <script>window.print()</script>
+        </body>
+      </html>
+    `);
+      newWindow.document.close();
     }
   };
 
-  const handleSubmit = async (formData: Partial<Laporan>) => {
-    try {
-      if (editingLaporan) {
-        await axios.put(`/api/laporan/${editingLaporan.id}`, formData);
-      } else {
-        await axios.post("/api/laporan", formData);
-      }
-      setIsModalOpen(false);
-      fetchData(); // Refresh data setelah simpan
-    } catch (err) {
-      console.error("Gagal menyimpan laporan:", err);
-    }
-  };
-  console.log(laporanList);
   return (
-    <AdminLayout title="Manajemen Laporan">
+    <AdminLayout title="Laporan Pesanan Selesai">
       <Card>
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h3 className="text-lg font-semibold">Daftar Laporan</h3>
+            <h3 className="text-lg font-semibold">Filter Laporan</h3>
             <p className="text-gray-600">
-              Kelola laporan bulanan pendapatan dan pesanan
+              Pilih rentang tanggal untuk melihat laporan pesanan selesai
             </p>
           </div>
-          <Button onClick={handleAdd} icon={<PlusIcon className="w-4 h-4" />}>
-            Tambah Laporan
+          <Button onClick={handleCetak} icon={<PlusIcon className="w-4 h-4" />}>
+            Cetak Laporan
           </Button>
         </div>
 
-        <Table
-          columns={columns}
-          data={laporanList}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
-      </Card>
+        <div className="flex gap-4 mb-6">
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="border rounded px-3 py-2"
+          />
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="border rounded px-3 py-2"
+          />
+        </div>
 
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={editingLaporan ? "Edit Laporan" : "Tambah Laporan"}
-      >
-        <LaporanForm
-          laporan={editingLaporan}
-          onSubmit={handleSubmit}
-          onCancel={() => setIsModalOpen(false)}
-        />
-      </Modal>
+        {loading ? (
+          <p>Memuat data...</p>
+        ) : (
+          <>
+            <Table columns={columns} data={laporanList} />
+            <div className="mt-4 text-right font-semibold text-green-600">
+              Total Pendapatan: {formatCurrency(totalPendapatan)}
+            </div>
+          </>
+        )}
+      </Card>
     </AdminLayout>
   );
 }

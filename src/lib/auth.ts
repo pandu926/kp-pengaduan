@@ -4,6 +4,7 @@ import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
+import bcrypt from "bcryptjs";
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   providers: [
@@ -24,7 +25,12 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         });
         console.log(admin);
 
-        if (!admin || admin.kataSandi !== kataSandi) return null;
+        if (!admin) return null;
+        const isPasswordValid = await bcrypt.compare(
+          kataSandi,
+          admin.kataSandi
+        );
+        if (!isPasswordValid) return null;
 
         return {
           id: String(admin.id),
@@ -52,8 +58,8 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
             pengguna = await prisma.pengguna.create({
               data: {
                 email: user.email as string,
-                nama: user.name || "Pengguna Baru",
                 googleId: account.providerAccountId,
+                nama: user.name || "Pengguna Baru",
               },
             });
           }

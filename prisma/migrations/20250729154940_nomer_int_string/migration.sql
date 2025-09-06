@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Pesanan" ALTER COLUMN "nomerHp" SET DATA TYPE TEXT;

@@ -21,7 +21,7 @@ export default function LayananPage() {
     try {
       const res = await fetch("/api/layanan");
       const data = await res.json();
-      setLayananList(data.dat);
+      setLayananList(data.data);
     } catch (err) {
       console.error("Gagal mengambil data layanan", err);
     }

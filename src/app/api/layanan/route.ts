@@ -45,7 +45,6 @@ export async function POST(request: NextRequest) {
       data: {
         nama,
         deskripsi,
-        urlGambar,
       },
     });
 

@@ -6,58 +6,58 @@ import { useInView } from "react-intersection-observer";
 
 const testimonials = [
   {
-    name: "Sari P.",
-    location: "Jakarta, Indonesia",
-    image: "/assets/testi/2.jpg",
+    name: "Budi Santoso",
+    location: "Bekasi, Indonesia",
+    image: "/assets/testi/kontruksi1.jpg",
     rating: 5,
-    title: "Liburan Paling Damai!",
+    title: "Proyek Tepat Waktu & Berkualitas!",
     message:
-      "Suasananya tenang banget! Bangun pagi disambut kabut dan pemandangan hijau yang adem banget. Kamarnya bersih, kasurnya empuk, dan yang paling penting mandi air hangatnya juara! Ini villa cocok buat kamu yang pengen istirahat dari ribetnya kota.",
+      "Tim konstruksi sangat profesional dan selalu on-time. Saya membangun rumah 2 lantai, dan hasil akhirnya lebih dari ekspektasi. Material berkualitas, dan prosesnya transparan. Recommended banget!",
   },
   {
-    name: "Yoga A.",
-    location: "Bandung, Indonesia",
-    image: "/assets/testi/1.jpg",
-    rating: 5,
-    title: "Beneran Healing, Bukan Sekadar Staycation",
-    message:
-      "Nginep di Villa Nana tuh bener-bener bikin kepala plong. Dapurnya lengkap, bisa masak sendiri, terus makan sambil lihat pemandangan luar biasa. Gak nyangka Dieng bisa senyaman ini. Udah kayak punya rumah di pegunungan!",
-  },
-  {
-    name: "Dina R.",
-    location: "Yogyakarta, Indonesia",
-    image: "/assets/testi/3.jpg",
+    name: "Maria Lestari",
+    location: "Depok, Indonesia",
+    image: "/assets/testi/kontruksi2.jpg",
     rating: 4,
-    title: "Cocok Buat Keluarga",
+    title: "Desain & Eksekusi Bagus",
     message:
-      "Aku nginep bareng keluarga dan semuanya betah. Anak-anak bisa main di halaman, orang tuaku suka suasananya yang tenang. Satu hal aja: akses jalannya sempit kalau bawa mobil gede. Tapi selebihnya top banget!",
+      "Saya pakai jasa ini untuk renovasi rumah lama jadi lebih modern. Desain arsiteknya keren dan tim tukangnya detail banget. Hanya sedikit delay karena cuaca, tapi overall puas.",
   },
   {
-    name: "Rafi Z.",
-    location: "Surabaya, Indonesia",
-    image: "/assets/testi/4.jpg",
+    name: "Andi Wijaya",
+    location: "Tangerang, Indonesia",
+    image: "/assets/testi/kontruksi3.jpg",
     rating: 5,
-    title: "Lebih Bagus dari Ekspektasi!",
+    title: "Bangun Ruko Cepat & Rapi",
     message:
-      "Jujur awalnya gak ekspektasi tinggi, tapi ternyata tempatnya keren banget. Kabin nyaman, fasilitas lengkap, dan pemandangannya luar biasa. Cocok buat self-reward setelah kerja terus-terusan!",
+      "Saya kontrak mereka untuk bangun ruko 2 lantai. Prosesnya cepat, timnya komunikatif, dan hasil akhir sangat rapi. Biaya juga transparan sejak awal. Terima kasih!",
   },
   {
-    name: "Wulan T.",
-    location: "Semarang, Indonesia",
-    image: "/assets/testi/5.jpg",
-    rating: 5,
-    title: "Tenang, Adem, Ngangenin!",
-    message:
-      "Udara sejuk, kamar bersih, staff ramah banget. Aku sampai gak mau pulang rasanya. Cocok buat pasangan yang pengen quality time tanpa gangguan. Pasti balik lagi ke sini!",
-  },
-  {
-    name: "Teguh N.",
+    name: "Rina Dewi",
     location: "Bogor, Indonesia",
-    image: "/gallery/1.png",
+    image: "/assets/testi/kontruksi4.jpg",
     rating: 4,
-    title: "Worth It Banget!",
+    title: "Renovasi Dapur Sangat Memuaskan",
     message:
-      "Villa ini punya semua yang saya cari: tenang, bersih, nyaman. Ada water heater, dapur, dan tempat tidur super empuk. Nilai plus buat suasana paginya yang damai banget. Recommended!",
+      "Renovasi dapur selesai dalam 2 minggu. Hasilnya bikin rumah jadi lebih nyaman dan estetik. Pekerjanya sopan dan rapi. Mungkin bisa ditingkatkan di bagian follow-up pasca proyek.",
+  },
+  {
+    name: "Fajar Pratama",
+    location: "Cirebon, Indonesia",
+    image: "/assets/testi/kontruksi5.jpg",
+    rating: 5,
+    title: "Bangun Rumah Impian Jadi Nyata",
+    message:
+      "Terima kasih untuk semua tim! Saya bisa punya rumah impian berkat bantuan mereka. Dari gambar 3D sampai finishing, semua sesuai harapan. Kualitas bangunan juga sangat bagus.",
+  },
+  {
+    name: "Sinta Mulyani",
+    location: "Semarang, Indonesia",
+    image: "/assets/testi/kontruksi6.jpg",
+    rating: 5,
+    title: "Profesional & Responsif",
+    message:
+      "Tim sangat responsif dari awal sampai akhir. Proyek renovasi interior kantor berjalan lancar. Komunikasi jelas dan pengerjaan sesuai timeline. Sangat puas dengan pelayanannya!",
   },
 ];
 
@@ -99,7 +99,7 @@ export default function Testimonials() {
         transition={{ delay: 0.2, duration: 0.6 }}
         className="text-4xl md:text-6xl font-bold text-black"
       >
-        Villa <span className="text-purple-600">Nana</span>
+        Arfilla <span className="text-purple-600">Jaya Putra</span>
       </motion.h1>
 
       <motion.div
@@ -127,13 +127,6 @@ export default function Testimonials() {
           >
             <div className="bg-white rounded-[16px] p-6 h-full">
               <div className="flex items-center justify-between mb-3">
-                <Image
-                  src={t.image}
-                  alt={t.name}
-                  width={40}
-                  height={40}
-                  className="rounded-full object-cover w-10 h-10"
-                />
                 <div>
                   <p className="font-semibold">{t.name}</p>
                   <p className="text-xs text-gray-500">{t.location}</p>

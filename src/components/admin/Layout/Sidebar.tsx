@@ -1,5 +1,7 @@
 "use client";
 
+import { signOut } from "next-auth/react";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -26,8 +28,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     { name: "Pengguna", href: "/admin/pengguna", icon: UsersIcon },
     { name: "Layanan", href: "/admin/layanan", icon: BriefcaseIcon },
     { name: "Pesanan", href: "/admin/pesanan", icon: ShoppingCartIcon },
-    { name: "Progres", href: "/admin/progres", icon: ChartBarIcon },
-    { name: "Portofolio", href: "/admin/portofolio", icon: FolderIcon },
+
     {
       name: "Laporan",
       href: "/admin/laporan",
@@ -42,7 +43,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       } lg:translate-x-0`}
     >
       <div className="flex items-center justify-between p-4 border-b">
-        <h1 className="text-xl font-bold text-gray-800">Admin Panel</h1>
+        <h1 className="text-xl font-bold text-gray-800">Arfilla Jaya Putra</h1>
         <button
           onClick={onClose}
           className="lg:hidden p-1 rounded-md hover:bg-gray-100"
@@ -73,6 +74,28 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
               </li>
             );
           })}
+          <div className="absolute bottom-0 w-full p-4">
+            <button
+              onClick={() => signOut({ callbackUrl: "/" })}
+              className="flex items-center w-full space-x-3 text-red-600 hover:text-red-700 p-3 rounded-lg hover:bg-red-50 transition-colors"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h5a2 2 0 012 2v1"
+                />
+              </svg>
+              <span>Logout</span>
+            </button>
+          </div>
         </ul>
       </nav>
     </aside>

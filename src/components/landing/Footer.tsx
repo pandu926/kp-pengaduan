@@ -42,75 +42,12 @@ export default function BookingAndFooter() {
   return (
     <section className="bg-white rounded-t-[20px] overflow-hidden">
       {/* === Booking Section === */}
-      <div className="flex flex-col lg:flex-row items-start justify-between px-6 py-30 md:px-30 gap-10">
-        {/* KIRI: Sosmed & Admin */}
-        <div className="w-full lg:w-1/2 grid grid-cols-2 gap-4">
-          {/* 2-a. Sosmed */}
-          <div className="grid grid-cols-2 gap-4">
-            {socials.map(({ Icon, href, label }, i) => (
-              <a
-                key={i}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={label}
-                className="w-16 h-16 flex items-center justify-center rounded-xl
-                           bg-[#fdf7ef] text-brown-800 text-xl
-                           hover:bg-brown-800 hover:text-white transition"
-              >
-                <Icon />
-              </a>
-            ))}
-          </div>
-
-          {/* 2-b. Admin WhatsApp */}
-          <div className="flex flex-col gap-4">
-            {admins.map(({ name, phone }) => (
-              <a
-                key={phone}
-                href={`https://wa.me/${phone}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between bg-[#fdf7ef] px-4 py-3
-                           rounded-full hover:bg-brown-800 transition group"
-              >
-                <div className="flex items-center gap-2">
-                  <FaWhatsapp className="text-brown-800 group-hover:text-white" />
-                  <span className="font-semibold text-brown-800 group-hover:text-white">
-                    {name}
-                  </span>
-                </div>
-                <FiArrowRight className="text-brown-800 group-hover:text-white" />
-              </a>
-            ))}
-          </div>
-        </div>
-
-        {/* KANAN: Booking teks */}
-        <div className="w-full lg:w-1/2">
-          <h2 className="text-4xl md:text-5xl font-bold mb-3">
-            Booking Sekarang
-          </h2>
-          <p className="text-gray-600 mb-4">
-            Hubungi kami untuk cek ketersediaan dan harga spesial minggu ini!
-          </p>
-          <a
-            href={`https://wa.me/${admins[0].phone}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block bg-[#9b502f] text-white font-semibold
-                       px-6 py-2 rounded-full hover:bg-[#843f26] transition"
-          >
-            Booking via WhatsApp
-          </a>
-        </div>
-      </div>
 
       {/* === Footer === */}
       <footer className="bg-[#3b1f17] text-[#fef7ec] pt-10 pb-5 px-6 md:px-16 rounded-t-[30px] relative">
-        <div className="text-2xl font-bold mb-2">NANA CABIN</div>
-        <p className="text-sm mb-4">
-          Liburan aman dan nyaman bersama kami — NANA CABIN Dieng
+        <div className="text-2xl font-bold mb-2">Arfilla Jaya Putra</div>
+        <p className="text-sm mb-4 capitalize">
+          serahkan pembangunan rumahmu bersama kami
         </p>
         <div className="w-full h-[6px] rounded-full bg-[#fef7ec] mb-16" />
 
@@ -126,7 +63,7 @@ export default function BookingAndFooter() {
         </button>
 
         <div className="text-center text-sm text-[#fef7ec]/80 mt-10">
-          © 2025 NANA CABIN. All rights reserved.
+          © 2025 Arfilla Jaya Putra. All rights reserved.
           <br />
           Denkhul Tech Solution
         </div>

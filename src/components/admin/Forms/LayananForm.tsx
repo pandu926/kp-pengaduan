@@ -14,7 +14,6 @@ const LayananForm = ({ layanan, onSubmit, onCancel }: LayananFormProps) => {
   const [formData, setFormData] = useState({
     nama: "",
     deskripsi: "",
-    urlGambar: "",
   });
 
   useEffect(() => {
@@ -22,7 +21,6 @@ const LayananForm = ({ layanan, onSubmit, onCancel }: LayananFormProps) => {
       setFormData({
         nama: layanan.nama,
         deskripsi: layanan.deskripsi || "",
-        urlGambar: layanan.urlGambar || "",
       });
     }
   }, [layanan]);
@@ -58,20 +56,6 @@ const LayananForm = ({ layanan, onSubmit, onCancel }: LayananFormProps) => {
           }
           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           rows={3}
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          URL Gambar
-        </label>
-        <input
-          type="url"
-          value={formData.urlGambar}
-          onChange={(e) =>
-            setFormData({ ...formData, urlGambar: e.target.value })
-          }
-          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
 

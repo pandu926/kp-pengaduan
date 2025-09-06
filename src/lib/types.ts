@@ -1,29 +1,41 @@
+export enum StatusPesanan {
+  PENGAJUAN = "PENGAJUAN",
+  SURVEI = "SURVEI",
+  PENGERJAAN = "PENGERJAAN",
+  SELESAI = "SELESAI",
+  DIBATALKAN = "DIBATALKAN",
+}
+
 export interface Pengguna {
   id: number;
   nama: string;
   email: string;
   googleId: string;
   dibuatPada: string;
+  pesanan?: Pesanan[];
 }
 
 export interface Layanan {
   id: number;
   nama: string;
   deskripsi?: string;
-  urlGambar?: string;
   dibuatPada: string;
+  pesanan?: Pesanan[];
 }
 
 export interface Pesanan {
   id: number;
-  penggunaId: number;
+  namaPelanggan: string;
+  penggunaId?: number;
   layananId?: number;
-  hargaDisepakati?: number;
+  hargaDisepakati?: number | string;
   tanggalPesan: string;
+  nomerHp: string;
   status: StatusPesanan;
   lokasi?: string;
   catatan?: string;
   dibuatPada: string;
+  progres?: ProgresPesanan[];
   pengguna?: Pengguna;
   layanan?: Layanan;
 }
@@ -38,6 +50,14 @@ export interface ProgresPesanan {
   pesanan?: Pesanan;
 }
 
+export interface Laporan {
+  id: number;
+  bulanLaporan: string;
+  totalPesanan?: number;
+  totalPendapatan?: number | string;
+  dibuatPada: string;
+}
+
 export interface Portofolio {
   id: number;
   judul: string;
@@ -45,21 +65,6 @@ export interface Portofolio {
   urlGambar?: string;
   tanggalSelesai?: string;
   dibuatPada: string;
-}
-
-export interface Laporan {
-  id: number;
-  bulanLaporan: string;
-  totalPesanan?: number;
-  totalPendapatan?: number;
-  dibuatPada: string;
-}
-
-export enum StatusPesanan {
-  MENUNGGU = "MENUNGGU",
-  DIPROSES = "DIPROSES",
-  SELESAI = "SELESAI",
-  DIBATALKAN = "DIBATALKAN",
 }
 
 export interface TableColumn {

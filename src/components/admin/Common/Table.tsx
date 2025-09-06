@@ -7,9 +7,28 @@ interface TableProps {
   data: any[];
   onEdit?: (item: any) => void;
   onDelete?: (id: number) => void;
+  onRowClick?: (item: any) => void;
 }
 
-const Table = ({ columns, data = [], onEdit, onDelete }: TableProps) => {
+const Table = ({
+  columns,
+  data = [],
+  onEdit,
+  onDelete,
+  onRowClick,
+}: TableProps) => {
+  const handleRowClick = (item: any, event: React.MouseEvent) => {
+    // Jangan trigger row click jika user mengklik tombol edit/delete
+    const target = event.target as HTMLElement;
+    if (target.closest("button")) {
+      return;
+    }
+
+    if (onRowClick) {
+      onRowClick(item);
+    }
+  };
+
   return (
     <div className="overflow-x-auto">
       {/* Desktop Table */}
@@ -41,7 +60,13 @@ const Table = ({ columns, data = [], onEdit, onDelete }: TableProps) => {
             </tr>
           ) : (
             data.map((item, index) => (
-              <tr key={item.id || index} className="border-b hover:bg-gray-50">
+              <tr
+                key={item.id || index}
+                className={`border-b hover:bg-gray-50 ${
+                  onRowClick ? "cursor-pointer" : ""
+                }`}
+                onClick={(e) => handleRowClick(item, e)}
+              >
                 {columns.map((column) => (
                   <td key={column.key} className="p-4 text-gray-800">
                     {column.render
@@ -54,7 +79,10 @@ const Table = ({ columns, data = [], onEdit, onDelete }: TableProps) => {
                     <div className="flex space-x-2">
                       {onEdit && (
                         <button
-                          onClick={() => onEdit(item)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit(item);
+                          }}
                           className="bg-blue-100 text-blue-600 px-3 py-1 rounded text-sm hover:bg-blue-200 transition-colors"
                         >
                           Edit
@@ -62,7 +90,10 @@ const Table = ({ columns, data = [], onEdit, onDelete }: TableProps) => {
                       )}
                       {onDelete && (
                         <button
-                          onClick={() => onDelete(item.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(item.id);
+                          }}
                           className="bg-red-100 text-red-600 px-3 py-1 rounded text-sm hover:bg-red-200 transition-colors"
                         >
                           Hapus
@@ -85,7 +116,12 @@ const Table = ({ columns, data = [], onEdit, onDelete }: TableProps) => {
           data.map((item, index) => (
             <div
               key={item.id || index}
-              className="border rounded-lg p-4 shadow-sm bg-white"
+              className={`border rounded-lg p-4 shadow-sm bg-white ${
+                onRowClick
+                  ? "cursor-pointer hover:shadow-md transition-shadow"
+                  : ""
+              }`}
+              onClick={(e) => handleRowClick(item, e)}
             >
               {columns.map((column) => (
                 <div key={column.key} className="mb-2">
@@ -101,7 +137,10 @@ const Table = ({ columns, data = [], onEdit, onDelete }: TableProps) => {
                 <div className="mt-3 flex space-x-2">
                   {onEdit && (
                     <button
-                      onClick={() => onEdit(item)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(item);
+                      }}
                       className="bg-blue-100 text-blue-600 px-3 py-1 rounded text-sm hover:bg-blue-200 transition-colors"
                     >
                       Edit
@@ -109,7 +148,10 @@ const Table = ({ columns, data = [], onEdit, onDelete }: TableProps) => {
                   )}
                   {onDelete && (
                     <button
-                      onClick={() => onDelete(item.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(item.id);
+                      }}
                       className="bg-red-100 text-red-600 px-3 py-1 rounded text-sm hover:bg-red-200 transition-colors"
                     >
                       Hapus
