@@ -15,7 +15,6 @@ export const middleware = auth((req) => {
   const { nextUrl } = req;
   const isAuthenticated = !!req.auth;
   const userRole = req.auth?.user?.role;
-  console.log(req.auth?.user);
 
   const pathname = nextUrl.pathname;
 

@@ -117,7 +117,6 @@ const validateAndFormatPhoneNumber = (
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log("Received request body:", body);
 
     const {
       penggunaId,
@@ -234,8 +233,6 @@ export async function POST(request: NextRequest) {
         },
       },
     });
-
-    console.log("Order created successfully:", pesanan);
 
     return NextResponse.json(
       {

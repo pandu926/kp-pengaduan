@@ -56,12 +56,12 @@ export default function Main() {
 
             {/* Book Now */}
             <a
-              href="https://wa.me/6282328616669?text=Halo%20admin%2C%20saya%20tertarik%20dengan%20jasa%20konstruksi%20yang%20Anda%20tawarkan.%20Mohon%20informasi%20lebih%20lanjut.%20Terima%20kasih."
+              href="/user/pemesanan"
               target="_blank"
               rel="noopener noreferrer"
               className="w-full sm:w-1/2 bg-[#a45a2a] text-white font-semibold px-6 py-3 hover:bg-[#7c3e26] transition text-center inline-block rounded"
             >
-              Konsultasi Sekarang
+              Pesan Sekarang
             </a>
           </div>
         </div>

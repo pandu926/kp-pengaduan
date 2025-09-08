@@ -40,10 +40,10 @@ export default function Navbar() {
                 Galeri
               </a>
               <Link
-                href="/user/pengaduan"
+                href="/user/"
                 className="bg-[#954C2E] text-white font-semibold px-6 py-2 rounded-xl hover:bg-[#7c3e26]"
               >
-                Booking
+                Login
               </Link>
             </div>
 
@@ -82,10 +82,10 @@ export default function Navbar() {
               Galeri
             </a>
             <a
-              href="#booking"
+              href="/user"
               className="block py-2 px-4 rounded bg-[#954C2E] text-white font-semibold hover:bg-[#7c3e26]"
             >
-              Booking
+              Login
             </a>
           </div>
         )}

@@ -38,7 +38,7 @@ export default function LaporanPage() {
       const res = await axios.get(
         `/api/laporan?start=${startDate}&end=${endDate}`
       );
-      console.log(res);
+
       const data: PesananLaporan[] = res.data.data.map((p: any) => ({
         id: p.id,
         namaPelanggan: p.namaPelanggan,
@@ -56,7 +56,7 @@ export default function LaporanPage() {
       setLoading(false);
     }
   };
-  console.log(laporanList);
+
   const columns: TableColumn[] = [
     { key: "id", label: "ID" },
     { key: "namaPelanggan", label: "Nama Pelanggan" },

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -10,6 +10,15 @@ export default function AdminLoginPage() {
   const [kataSandi, setKataSandi] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const { data: session, status: authStatus } = useSession();
+
+  useEffect(() => {
+    if (session?.user.role == "ADMIN") {
+      router.push("/admin/dashboard");
+    } else {
+      return;
+    }
+  });
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,7 +30,6 @@ export default function AdminLoginPage() {
       email,
       kataSandi,
     });
-    console.log(res.error);
 
     if (res?.ok && res?.error === undefined) {
       setSuccess("Login berhasil! Mengalihkan...");

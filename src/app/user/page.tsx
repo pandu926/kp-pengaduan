@@ -7,6 +7,16 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function LoginPage() {
+  const { data: session, status: authStatus } = useSession();
+  const router = useRouter();
+  useEffect(() => {
+    if (session?.user.role == "USER") {
+      router.push("/user/dashboard");
+    } else {
+      return;
+    }
+  });
+  console.log(session);
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-white to-blue-200 px-4">
       <div className="bg-white rounded-3xl shadow-2xl p-10 w-full max-w-lg text-center animate-fade-in-down">

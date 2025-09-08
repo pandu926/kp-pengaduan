@@ -199,8 +199,6 @@ export default function CreateOrderPage() {
         status: StatusPesanan.MENUNGGU,
       };
 
-      console.log("Sending order data:", orderData);
-
       const response = await axios.post("/api/pesanan", orderData);
 
       if (response.data.success) {

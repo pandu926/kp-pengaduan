@@ -56,7 +56,6 @@ export async function PUT(
       data: {
         nama,
         deskripsi,
-        urlGambar,
       },
     });
 
