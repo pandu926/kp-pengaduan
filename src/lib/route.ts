@@ -9,9 +9,9 @@ export const PUBLIC_ROUTES = [
 export const ADMIN_ROUTES = [
   "/admin/pengguna",
   "/admin/dashboard",
-
+  "/admin/laporan",
   "/admin/layanan",
-
+  "/admin/portofolio",
   "/admin/progres",
   "/admin/pesanan",
 ];

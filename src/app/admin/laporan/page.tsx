@@ -74,47 +74,236 @@ export default function LaporanPage() {
   ];
 
   const handleCetak = () => {
-    const newWindow = window.open("", "_blank");
-    if (newWindow) {
-      newWindow.document.write(`
-      <html>
-        <head>
-          <title>Laporan Pendapatan CV Arfilla Jaya Putra</title>
-          <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-        </head>
-        <body class="p-8 font-sans">
-          <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold">Laporan Pendapatan</h1>
-            <h2 class="text-xl font-medium mt-2">CV Arfilla Jaya Putra</h2>
-            <p class="text-gray-600 mt-1">Periode: ${formatDate(
-              startDate
-            )} - ${formatDate(endDate)}</p>
+    // Generate HTML string dulu
+    const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Laporan Pendapatan CV Arfilla Jaya Putra</title>
+        <meta charset="utf-8">
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+          }
+          
+          .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+          }
+          
+          .header {
+            text-align: center;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 30px;
+            margin-bottom: 30px;
+          }
+          
+          .company-name {
+            font-size: 32px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 5px;
+            letter-spacing: 1px;
+          }
+          
+          .report-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 10px;
+          }
+          
+          .period {
+            font-size: 14px;
+            color: #718096;
+            background: #f7fafc;
+            padding: 8px 20px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 10px;
+          }
+          
+          .info-cards {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+          }
+          
+          .info-card {
+            flex: 1;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            text-align: center;
+          }
+          
+          .info-card-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            opacity: 0.9;
+          }
+          
+          .info-card-value {
+            font-size: 24px;
+            font-weight: 700;
+          }
+          
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+          }
+          
+          thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+          }
+          
+          th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          
+          th.text-right {
+            text-align: right;
+          }
+          
+          td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #2d3748;
+            font-size: 14px;
+          }
+          
+          tbody tr:nth-child(even) {
+            background: #fafbfc;
+          }
+          
+          .text-right {
+            text-align: right;
+          }
+          
+          .text-center {
+            text-align: center;
+          }
+          
+          tfoot {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+            font-weight: 700;
+          }
+          
+          tfoot td {
+            padding: 15px;
+            border: none;
+            font-size: 16px;
+          }
+          
+          .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #e2e8f0;
+            text-align: center;
+          }
+          
+          .footer-text {
+            color: #718096;
+            font-size: 12px;
+            margin-bottom: 5px;
+          }
+          
+          .footer-brand {
+            color: #667eea;
+            font-weight: 600;
+            font-size: 14px;
+          }
+          
+          .generated-date {
+            color: #a0aec0;
+            font-size: 11px;
+            margin-top: 10px;
+          }
+          
+          @media print {
+            body {
+              background: white;
+              padding: 20px;
+            }
+            
+            .container {
+              box-shadow: none;
+              padding: 20px;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="company-name">CV ARFILLA JAYA PUTRA</div>
+            <div class="report-title">Laporan Pendapatan</div>
+            <div class="period">
+              Periode: ${formatDate(startDate)} - ${formatDate(endDate)}
+            </div>
           </div>
-
-          <table class="min-w-full border-collapse border border-gray-300 shadow-md">
-            <thead class="bg-blue-200">
+          
+          <div class="info-cards">
+            <div class="info-card">
+              <div class="info-card-label">Total Transaksi</div>
+              <div class="info-card-value">${laporanList.length}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-card-label">Total Pendapatan</div>
+              <div class="info-card-value">${formatCurrency(
+                totalPendapatan
+              )}</div>
+            </div>
+          </div>
+          
+          <table>
+            <thead>
               <tr>
-                <th class="border border-gray-300 px-4 py-2">No</th>
-                <th class="border border-gray-300 px-4 py-2">Tanggal</th>
-                <th class="border border-gray-300 px-4 py-2">Pelanggan</th>
-                <th class="border border-gray-300 px-4 py-2">Layanan</th>
-                <th class="border border-gray-300 px-4 py-2 text-right">Harga</th>
+                <th style="width: 60px;">No</th>
+                <th style="width: 140px;">Tanggal</th>
+                <th>Pelanggan</th>
+                <th>Layanan</th>
+                <th class="text-right" style="width: 180px;">Harga</th>
               </tr>
             </thead>
             <tbody>
               ${laporanList
                 .map(
                   (p, i) => `
-                <tr class="${i % 2 === 0 ? "bg-gray-50" : "bg-white"}">
-                  <td class="border border-gray-300 px-4 py-2">${i + 1}</td>
-                  <td class="border border-gray-300 px-4 py-2">${formatDate(
-                    p.tanggalPesan
-                  )}</td>
-                  <td class="border border-gray-300 px-4 py-2">${
-                    p.namaPelanggan
-                  }</td>
-                  <td class="border border-gray-300 px-4 py-2">${p.layanan}</td>
-                  <td class="border border-gray-300 px-4 py-2 text-right">${formatCurrency(
+                <tr>
+                  <td class="text-center">${i + 1}</td>
+                  <td>${formatDate(p.tanggalPesan)}</td>
+                  <td>${p.namaPelanggan}</td>
+                  <td>${p.layanan}</td>
+                  <td class="text-right">${formatCurrency(
                     p.hargaDisepakati
                   )}</td>
                 </tr>
@@ -123,24 +312,48 @@ export default function LaporanPage() {
                 .join("")}
             </tbody>
             <tfoot>
-              <tr class="bg-gray-200 font-semibold">
-                <td colspan="4" class="border border-gray-300 px-4 py-2 text-right">Total Pendapatan</td>
-                <td class="border border-gray-300 px-4 py-2 text-right">${formatCurrency(
-                  totalPendapatan
-                )}</td>
+              <tr>
+                <td colspan="4" class="text-right">TOTAL PENDAPATAN</td>
+                <td class="text-right">${formatCurrency(totalPendapatan)}</td>
               </tr>
             </tfoot>
           </table>
-
-          <div class="mt-6 text-center text-gray-500 text-sm">
-            Generated by Sistem Laporan CV Arfilla Jaya Putra
+          
+          <div class="footer">
+            <div class="footer-text">Dokumen ini dibuat secara otomatis oleh sistem</div>
+            <div class="footer-brand">CV Arfilla Jaya Putra - Sistem Manajemen Pesanan</div>
+            <div class="generated-date">
+              Dicetak pada: ${new Date().toLocaleString("id-ID", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </div>
           </div>
+        </div>
+      </body>
+    </html>
+  `;
 
-          <script>window.print()</script>
-        </body>
-      </html>
-    `);
-      newWindow.document.close();
+    // Buat blob dari HTML
+    const blob = new Blob([htmlContent], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+
+    // Buka window dengan blob URL
+    const newWindow = window.open(url, "_blank");
+
+    // Tunggu load, baru print
+    if (newWindow) {
+      newWindow.onload = () => {
+        setTimeout(() => {
+          newWindow.print();
+          // Cleanup blob URL setelah print
+          URL.revokeObjectURL(url);
+        }, 500);
+      };
     }
   };
 
