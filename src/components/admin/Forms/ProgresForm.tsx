@@ -1,89 +1,145 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Button from "../Common/Button";
-
-interface ProgresFormData {
-  keterangan: string;
-  persenProgres: number;
-  urlDokumentasi: string;
-}
+import { Upload, X } from "lucide-react";
 
 interface ProgresFormProps {
-  orderId: number; // ID pesanan langsung dari parent
-  progres?: any | null; // Data progres jika edit
-  onSubmit: (data: ProgresFormData & { pesananId: number }) => void;
+  orderId: number;
+  initialData?: any | null; // Data progres jika edit
+  onSubmit: (formData: FormData) => void | Promise<void>;
   onCancel: () => void;
 }
 
 const ProgresForm = ({
   orderId,
-  progres,
+  initialData,
   onSubmit,
   onCancel,
 }: ProgresFormProps) => {
-  const [formData, setFormData] = useState<ProgresFormData>({
-    keterangan: "",
-    persenProgres: 0,
-    urlDokumentasi: "",
-  });
-
+  const [keterangan, setKeterangan] = useState("");
+  const [persenProgres, setPersenProgres] = useState(0);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Reset form data ketika progres berubah
+  // Load initial data jika mode edit
   useEffect(() => {
-    if (progres) {
-      setFormData({
-        keterangan: progres.keterangan || "",
-        persenProgres: progres.persenProgres || 0,
-        urlDokumentasi: progres.urlDokumentasi || "",
-      });
+    if (initialData) {
+      setKeterangan(initialData.keterangan || "");
+      setPersenProgres(initialData.persenProgres || 0);
+      setImagePreview(initialData.urlDokumentasi || null);
     } else {
-      // Reset ke default jika tidak ada progres (mode tambah)
-      setFormData({
-        keterangan: "",
-        persenProgres: 0,
-        urlDokumentasi: "",
-      });
+      setKeterangan("");
+      setPersenProgres(0);
+      setImagePreview(null);
+      setImageFile(null);
     }
-  }, [progres]);
+  }, [initialData]);
 
-  const handleChange = (
-    field: keyof ProgresFormData,
-    value: string | number
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+  // Handle file selection
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    setError(null);
+
+    if (!file) return;
+
+    // Validasi tipe file
+    if (!file.type.startsWith("image/")) {
+      setError("File harus berupa gambar (JPG, PNG, GIF, dll)");
+      return;
+    }
+
+    // Validasi ukuran file (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      setError("Ukuran file maksimal 5MB");
+      return;
+    }
+
+    setImageFile(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
+  // Remove image
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImagePreview(initialData?.urlDokumentasi || null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // Upload image to external API
+  const uploadImageToAPI = async (file: File): Promise<string> => {
+    const uploadFormData = new FormData();
+    uploadFormData.append("image", file);
+
+    const response = await fetch("https://apigambar.denkhultech.com/upload", {
+      method: "POST",
+      body: uploadFormData,
+    });
+
+    if (!response.ok) {
+      throw new Error("Gagal mengupload gambar");
+    }
+
+    const result = await response.json();
+    return `https://apigambar.denkhultech.com/uploads/${result.fileName}`;
+  };
+
+  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (isSubmitting) return;
 
-    // Validasi form
-    if (!formData.keterangan.trim()) {
-      alert("Keterangan wajib diisi");
+    setError(null);
+
+    // Validasi
+    if (!keterangan.trim()) {
+      setError("Keterangan tidak boleh kosong");
       return;
     }
 
-    if (formData.persenProgres < 0 || formData.persenProgres > 100) {
-      alert("Persentase progres harus antara 0-100");
+    if (persenProgres < 0 || persenProgres > 100) {
+      setError("Persentase progress harus antara 0-100");
       return;
     }
 
     try {
       setIsSubmitting(true);
 
-      // Kirim data dengan pesananId otomatis
-      await onSubmit({
-        ...formData,
-        pesananId: orderId,
-      });
-    } catch (error) {
-      console.error("Error submitting progress:", error);
+      let imageUrl = initialData?.urlDokumentasi || "";
+
+      // Upload gambar baru jika ada
+      if (imageFile) {
+        imageUrl = await uploadImageToAPI(imageFile);
+      }
+
+      // Jika user hapus gambar (tidak ada file dan tidak ada preview)
+      if (!imageFile && !imagePreview) {
+        imageUrl = "";
+      }
+
+      const formData = new FormData();
+      formData.append("keterangan", keterangan);
+      formData.append("persenProgres", persenProgres.toString());
+      formData.append("pesananId", orderId.toString());
+      formData.append("urlDokumentasi", imageUrl);
+
+      await onSubmit(formData);
+    } catch (err: any) {
+      setError(err.message || "Gagal menyimpan progress");
+      console.error(err);
     } finally {
       setIsSubmitting(false);
     }
@@ -91,7 +147,14 @@ const ProgresForm = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Info ID Pesanan - readonly */}
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+          {error}
+        </div>
+      )}
+
+      {/* Info ID Pesanan */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           ID Pesanan
@@ -107,8 +170,8 @@ const ProgresForm = ({
           Keterangan <span className="text-red-500">*</span>
         </label>
         <textarea
-          value={formData.keterangan}
-          onChange={(e) => handleChange("keterangan", e.target.value)}
+          value={keterangan}
+          onChange={(e) => setKeterangan(e.target.value)}
           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
           rows={3}
           placeholder="Masukkan keterangan progres..."
@@ -126,10 +189,8 @@ const ProgresForm = ({
             type="number"
             min="0"
             max="100"
-            value={formData.persenProgres}
-            onChange={(e) =>
-              handleChange("persenProgres", parseInt(e.target.value) || 0)
-            }
+            value={persenProgres}
+            onChange={(e) => setPersenProgres(parseInt(e.target.value) || 0)}
             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             placeholder="0"
             required
@@ -142,31 +203,69 @@ const ProgresForm = ({
             <div
               className="bg-blue-600 h-2 rounded-full transition-all duration-300"
               style={{
-                width: `${Math.min(Math.max(formData.persenProgres, 0), 100)}%`,
+                width: `${Math.min(Math.max(persenProgres, 0), 100)}%`,
               }}
             ></div>
           </div>
           <p className="text-xs text-gray-500 mt-1">
-            Preview: {formData.persenProgres}% selesai
+            Preview: {persenProgres}% selesai
           </p>
         </div>
       </div>
 
-      {/* URL Dokumentasi */}
+      {/* Upload Dokumentasi Gambar */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          URL Dokumentasi
+          Dokumentasi (Opsional)
         </label>
-        <input
-          type="url"
-          value={formData.urlDokumentasi}
-          onChange={(e) => handleChange("urlDokumentasi", e.target.value)}
-          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          placeholder="https://example.com/dokumentasi"
-        />
-        <p className="text-xs text-gray-500 mt-1">
-          Opsional: Link ke foto/video dokumentasi progres
+        <p className="text-xs text-gray-500 mb-3">
+          Upload gambar dokumentasi progress. Maks 5MB, format: JPG, PNG, GIF
         </p>
+
+        {/* Preview Area */}
+        {imagePreview ? (
+          <div className="relative">
+            <img
+              src={imagePreview}
+              alt="Preview"
+              className="w-full h-48 object-cover rounded-lg border border-gray-300"
+            />
+            <button
+              type="button"
+              onClick={handleRemoveImage}
+              className="absolute top-2 right-2 p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full transition-colors"
+              title="Hapus gambar"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/50 text-white text-xs rounded">
+              {imageFile
+                ? `${(imageFile.size / 1024 / 1024).toFixed(2)} MB`
+                : "Gambar dari database"}
+            </div>
+          </div>
+        ) : (
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors"
+          >
+            <Upload className="w-12 h-12 mx-auto text-gray-400 mb-3" />
+            <p className="text-sm text-gray-600 mb-1">
+              Klik untuk upload gambar
+            </p>
+            <p className="text-xs text-gray-500">
+              atau drag & drop file disini
+            </p>
+          </div>
+        )}
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+          className="hidden"
+        />
       </div>
 
       {/* Action Buttons */}
@@ -187,9 +286,9 @@ const ProgresForm = ({
           {isSubmitting ? (
             <>
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-              {progres ? "Updating..." : "Menyimpan..."}
+              {initialData ? "Updating..." : "Menyimpan..."}
             </>
-          ) : progres ? (
+          ) : initialData ? (
             "Update Progres"
           ) : (
             "Simpan Progres"

@@ -11,18 +11,10 @@ import {
   CheckCircle,
   XCircle,
   ChevronRight,
-  Edit,
-  Trash2,
-  MessageCircle,
-  Download,
-  Settings,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import axios from "axios";
 import { StatusPesanan } from "@/lib/types";
-import Swal from "sweetalert2";
-import Modal from "@/components/admin/Common/Modal";
-import ProgresForm from "@/components/admin/Forms/ProgresForm";
 
 // Types
 interface Pengguna {
@@ -66,10 +58,6 @@ const OrderDetailPage: React.FC = () => {
   const [order, setOrder] = useState<Pesanan | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingProgress, setEditingProgress] = useState<ProgresPesanan | null>(
-    null
-  );
 
   const params = useParams<{ id: string }>();
   const orderId = parseInt(params.id);
@@ -94,109 +82,6 @@ const OrderDetailPage: React.FC = () => {
       fetchOrderData();
     }
   }, [orderId]);
-
-  // Refresh order data
-  const refreshOrderData = async () => {
-    try {
-      const res = await axios.get(`/api/pesanan/${orderId}`);
-      setOrder(res.data.data);
-    } catch (err) {
-      console.error("Error refreshing order:", err);
-    }
-  };
-
-  // Handle progress submission (create/update)
-  const handleProgressSubmit = async (formData: FormData) => {
-    try {
-      // Convert FormData to JSON object
-      const data = {
-        keterangan: formData.get("keterangan") as string,
-        persenProgres: parseInt(formData.get("persenProgres") as string),
-        urlDokumentasi: formData.get("urlDokumentasi") as string,
-        pesananId: parseInt(formData.get("pesananId") as string),
-      };
-
-      if (editingProgress) {
-        // Update existing progress - gunakan PUT atau PATCH
-        await axios.put(`/api/progres/${editingProgress.id}`, data);
-        Swal.fire({
-          icon: "success",
-          title: "Berhasil",
-          text: "Progress berhasil diupdate",
-          timer: 2000,
-          showConfirmButton: false,
-        });
-      } else {
-        // Create new progress
-        await axios.post("/api/progres", data);
-        Swal.fire({
-          icon: "success",
-          title: "Berhasil",
-          text: "Progress berhasil ditambahkan",
-          timer: 2000,
-          showConfirmButton: false,
-        });
-      }
-
-      await refreshOrderData();
-      setIsModalOpen(false);
-      setEditingProgress(null);
-    } catch (error: any) {
-      console.error("Gagal menyimpan progres:", error);
-      Swal.fire({
-        icon: "error",
-        title: "Gagal",
-        text: error.response?.data?.message || "Gagal menyimpan progress",
-      });
-    }
-  };
-
-  // Handle edit progress
-  const handleEditProgress = (progress: ProgresPesanan) => {
-    setEditingProgress(progress);
-    setIsModalOpen(true);
-  };
-
-  // Handle delete progress
-  const handleDeleteProgress = async (progressId: number) => {
-    const result = await Swal.fire({
-      title: "Hapus Progress?",
-      text: "Progress yang dihapus tidak dapat dikembalikan",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
-      confirmButtonText: "Ya, Hapus",
-      cancelButtonText: "Batal",
-    });
-
-    if (result.isConfirmed) {
-      try {
-        await axios.delete(`/api/progres/${progressId}`);
-        await refreshOrderData();
-        Swal.fire({
-          icon: "success",
-          title: "Berhasil",
-          text: "Progress berhasil dihapus",
-          timer: 2000,
-          showConfirmButton: false,
-        });
-      } catch (error) {
-        console.error("Gagal menghapus progres:", error);
-        Swal.fire({
-          icon: "error",
-          title: "Gagal",
-          text: "Gagal menghapus progress",
-        });
-      }
-    }
-  };
-
-  // Handle modal close
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-    setEditingProgress(null);
-  };
 
   // Status utilities
   const getStatusConfig = (status: StatusPesanan) => {
@@ -242,71 +127,6 @@ const OrderDetailPage: React.FC = () => {
       hour: "2-digit",
       minute: "2-digit",
     }).format(new Date(dateString));
-  };
-
-  // Status update
-  const nextStatusMap: Record<StatusPesanan, StatusPesanan | null> = {
-    [StatusPesanan.PENGAJUAN]: StatusPesanan.SURVEI,
-    [StatusPesanan.SURVEI]: StatusPesanan.PENGERJAAN,
-    [StatusPesanan.PENGERJAAN]: StatusPesanan.SELESAI,
-    [StatusPesanan.SELESAI]: null,
-    [StatusPesanan.DIBATALKAN]: null,
-  };
-
-  const handleUpdateStatus = async () => {
-    if (!order) return;
-
-    const currentStatus = order.status;
-    const nextStatus = nextStatusMap[currentStatus];
-
-    if (!nextStatus) {
-      Swal.fire({
-        icon: "info",
-        title: "Status Final",
-        text: "Pesanan sudah berada pada status final.",
-      });
-      return;
-    }
-
-    try {
-      const res = await axios.patch(`/api/pesanan/${order.id}`, {
-        status: nextStatus,
-      });
-      setOrder(res.data.data);
-      Swal.fire({
-        icon: "success",
-        title: "Berhasil",
-        text: `Status berhasil diubah ke ${nextStatus}`,
-        timer: 2000,
-        showConfirmButton: false,
-      });
-    } catch (error) {
-      console.error("Gagal update status:", error);
-      Swal.fire({
-        icon: "error",
-        title: "Gagal",
-        text: "Gagal mengubah status pesanan.",
-      });
-    }
-  };
-
-  const handleSendWA = () => {
-    if (!order) return;
-
-    const phoneNumber = order.nomerHp.replace(/^0/, "62");
-    const message = encodeURIComponent(
-      `Halo ${order.namaPelanggan},\n\n` +
-        `Pesanan Anda dengan ID #${order.id.toString().padStart(6, "0")} ` +
-        `saat ini berstatus: ${order.status}.\n` +
-        `Layanan: ${order.layanan?.nama || "-"}\n` +
-        `Harga: ${
-          order.hargaDisepakati ? `Rp${order.hargaDisepakati}` : "-"
-        }\n\n` +
-        `Terima kasih telah menggunakan layanan kami!`
-    );
-
-    const waLink = `https://wa.me/${phoneNumber}?text=${message}`;
-    window.open(waLink, "_blank");
   };
 
   // Loading state
@@ -497,12 +317,6 @@ const OrderDetailPage: React.FC = () => {
                 <h2 className="text-xl font-semibold text-gray-900">
                   Progress Pesanan
                 </h2>
-                <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
-                >
-                  Tambah Progres
-                </button>
               </div>
 
               {order.progres.length > 0 ? (
@@ -552,17 +366,6 @@ const OrderDetailPage: React.FC = () => {
                                   <h4 className="font-medium text-gray-900">
                                     Progress Update
                                   </h4>
-                                  <span
-                                    className={`px-2 py-1 text-xs rounded-full font-medium ${
-                                      isCompleted
-                                        ? "bg-green-100 text-green-700"
-                                        : isInProgress
-                                        ? "bg-blue-100 text-blue-700"
-                                        : "bg-gray-100 text-gray-600"
-                                    }`}
-                                  >
-                                    {progress.persenProgres}% Selesai
-                                  </span>
                                 </div>
                                 <p className="text-sm text-gray-600 leading-relaxed mb-3">
                                   {progress.keterangan}
@@ -600,26 +403,6 @@ const OrderDetailPage: React.FC = () => {
                                     />
                                   </div>
                                 )}
-
-                                {/* Action Buttons */}
-                                <div className="flex gap-2 mt-3">
-                                  <button
-                                    onClick={() => handleEditProgress(progress)}
-                                    className="px-3 py-1.5 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md transition-colors flex items-center gap-1"
-                                  >
-                                    <Edit className="w-3 h-3" />
-                                    Edit
-                                  </button>
-                                  <button
-                                    onClick={() =>
-                                      handleDeleteProgress(progress.id)
-                                    }
-                                    className="px-3 py-1.5 text-xs bg-red-50 text-red-600 hover:bg-red-100 rounded-md transition-colors flex items-center gap-1"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                    Hapus
-                                  </button>
-                                </div>
                               </div>
                               <div className="text-right ml-4">
                                 <span className="text-xs text-gray-500">
@@ -636,12 +419,6 @@ const OrderDetailPage: React.FC = () => {
                 <div className="text-center py-8 text-gray-500">
                   <Clock className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                   <p>Belum ada progress</p>
-                  <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="mt-3 text-blue-600 hover:text-blue-800 text-sm font-medium"
-                  >
-                    Tambah progress pertama
-                  </button>
                 </div>
               )}
             </div>
@@ -692,27 +469,6 @@ const OrderDetailPage: React.FC = () => {
               )}
             </div>
 
-            {/* Quick Actions */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Aksi Cepat
-              </h3>
-              <div className="space-y-3">
-                <button
-                  onClick={handleUpdateStatus}
-                  className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-                >
-                  Update Status
-                </button>
-                <button
-                  onClick={handleSendWA}
-                  className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
-                >
-                  Kirim Notifikasi WA
-                </button>
-              </div>
-            </div>
-
             {/* Summary */}
             <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl text-white p-6">
               <h3 className="text-lg font-semibold mb-4">Ringkasan</h3>
@@ -738,20 +494,6 @@ const OrderDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Modal untuk tambah/edit progres */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={handleModalClose}
-        title={editingProgress ? "Edit Progress" : "Tambah Progress"}
-      >
-        <ProgresForm
-          orderId={orderId}
-          initialData={editingProgress}
-          onSubmit={handleProgressSubmit}
-          onCancel={handleModalClose}
-        />
-      </Modal>
     </div>
   );
 };

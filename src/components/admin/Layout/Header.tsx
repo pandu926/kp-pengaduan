@@ -22,15 +22,6 @@ const Header = ({ title, onMenuClick }: HeaderProps) => {
             {title}
           </h2>
         </div>
-
-        <div className="flex items-center space-x-4">
-          <button className="p-2 rounded-lg hover:bg-gray-100">
-            <BellIcon className="w-5 h-5" />
-          </button>
-          <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
-            A
-          </div>
-        </div>
       </div>
     </header>
   );

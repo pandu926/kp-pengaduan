@@ -9,12 +9,12 @@ export const PUBLIC_ROUTES = [
 export const ADMIN_ROUTES = [
   "/admin/pengguna",
   "/admin/dashboard",
-  "/admin/laporan",
+
   "/admin/layanan",
-  "/admin/portofolio",
+
   "/admin/progres",
   "/admin/pesanan",
 ];
-export const USER_ROUTES = ["/user/dashboard", "user/pengaduan"];
+export const USER_ROUTES = ["/user/dashboard", "/user/pemesanan"];
 
 export const DEFAULT_REDIRECT = "/dashboard";
