@@ -14,6 +14,7 @@ const LayananForm = ({ layanan, onSubmit, onCancel }: LayananFormProps) => {
   const [formData, setFormData] = useState({
     nama: "",
     deskripsi: "",
+    harga: 0,
   });
 
   useEffect(() => {
@@ -21,17 +22,24 @@ const LayananForm = ({ layanan, onSubmit, onCancel }: LayananFormProps) => {
       setFormData({
         nama: layanan.nama,
         deskripsi: layanan.deskripsi || "",
+        harga: Number(layanan.harga) || 0,
       });
     }
   }, [layanan]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+
+    // Konversi harga ke number (atau string decimal jika backend memerlukan)
+    onSubmit({
+      ...formData,
+      harga: parseFloat(formData.harga.toString()),
+    });
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Nama */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Nama Layanan
@@ -45,6 +53,7 @@ const LayananForm = ({ layanan, onSubmit, onCancel }: LayananFormProps) => {
         />
       </div>
 
+      {/* Deskripsi */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Deskripsi
@@ -59,8 +68,27 @@ const LayananForm = ({ layanan, onSubmit, onCancel }: LayananFormProps) => {
         />
       </div>
 
+      {/* Harga */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Harga per meter persegi (Rp)
+        </label>
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          value={formData.harga}
+          onChange={(e) =>
+            setFormData({ ...formData, harga: parseFloat(e.target.value) || 0 })
+          }
+          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          required
+        />
+      </div>
+
+      {/* Tombol Aksi */}
       <div className="flex justify-end space-x-3 pt-4">
-        <Button variant="secondary" onClick={onCancel}>
+        <Button variant="secondary" type="button" onClick={onCancel}>
           Batal
         </Button>
         <Button type="submit">{layanan ? "Update" : "Simpan"}</Button>

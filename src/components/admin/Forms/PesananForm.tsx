@@ -23,7 +23,7 @@ const PesananForm = ({ pesanan, onSubmit, onCancel }: PesananFormProps) => {
     layananId: undefined,
     hargaDisepakati: undefined,
     tanggalPesan: "",
-    nomerHp: "",
+    nomorHp: "",
     status: undefined,
     lokasi: "",
     catatan: "",
@@ -52,7 +52,7 @@ const PesananForm = ({ pesanan, onSubmit, onCancel }: PesananFormProps) => {
         layananId: pesanan.layananId ?? undefined,
         hargaDisepakati: pesanan.hargaDisepakati ?? undefined,
         tanggalPesan: pesanan.tanggalPesan,
-        nomerHp: pesanan.nomerHp,
+        nomorHp: pesanan.nomorHp,
         status: pesanan.status,
         lokasi: pesanan.lokasi ?? "",
         catatan: pesanan.catatan ?? "",
@@ -173,9 +173,9 @@ const PesananForm = ({ pesanan, onSubmit, onCancel }: PesananFormProps) => {
         </label>
         <input
           type="text"
-          value={formData.nomerHp ?? ""}
+          value={formData.nomorHp ?? ""}
           onChange={(e) =>
-            setFormData({ ...formData, nomerHp: e.target.value })
+            setFormData({ ...formData, nomorHp: e.target.value })
           }
           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           required

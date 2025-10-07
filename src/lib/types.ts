@@ -19,7 +19,7 @@ export interface Layanan {
   id: number;
   nama: string;
   deskripsi?: string;
-  dibuatPada: string;
+  harga?: number;
   pesanan?: Pesanan[];
 }
 
@@ -30,7 +30,7 @@ export interface Pesanan {
   layananId?: number;
   hargaDisepakati?: number | string;
   tanggalPesan: string;
-  nomerHp: string;
+  nomorHp: string;
   status: StatusPesanan;
   lokasi?: string;
   catatan?: string;

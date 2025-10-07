@@ -8,12 +8,11 @@ interface Layanan {
   id: number;
   nama: string;
   deskripsi?: string;
-  hargaDasar?: number;
-  urlGambar?: string;
+  harga?: number;
 }
 
 enum StatusPesanan {
-  MENUNGGU = "MENUNGGU",
+  PENGAJUAN = "PENGAJUAN",
   DALAM_PROSES = "DALAM_PROSES",
   SELESAI = "SELESAI",
   DIBATALKAN = "DIBATALKAN",
@@ -23,7 +22,7 @@ interface OrderFormData {
   layananId: number | null;
   hargaDisepakati: string;
   namaPelanggan: string;
-  nomerHp: string;
+  nomorHp: string;
   lokasi: string;
   catatan: string;
 }
@@ -63,12 +62,14 @@ export default function CreateOrderPage() {
   const [loadingLayanan, setLoadingLayanan] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [selectedLayanan, setSelectedLayanan] = useState<Layanan | null>(null);
 
   const [formData, setFormData] = useState<OrderFormData>({
     layananId: null,
     namaPelanggan: "",
     hargaDisepakati: "0",
-    nomerHp: "",
+    nomorHp: "",
     lokasi: "",
     catatan: "",
   });
@@ -90,54 +91,62 @@ export default function CreateOrderPage() {
     fetchLayanan();
   }, []);
 
+  const handleSelectLayanan = (layanan: Layanan) => {
+    setSelectedLayanan(layanan);
+    setFormData((prev) => ({
+      ...prev,
+      layananId: layanan.id,
+      hargaDisepakati: layanan.harga ? layanan.harga.toString() : "0",
+    }));
+    setShowForm(true);
+    setError(null);
+
+    // Smooth scroll to form
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }, 100);
+  };
+
+  const handleBackToServices = () => {
+    setShowForm(false);
+    setSelectedLayanan(null);
+    setError(null);
+    setSuccess(null);
+  };
+
   const handleInputChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "layananId" ? (value ? parseInt(value) : null) : value,
+      [name]: value,
     }));
 
-    // Clear error when user starts typing
     if (error) setError(null);
   };
 
-  // Improved phone number formatter
   const formatPhoneNumber = (phone: string): string => {
-    // Remove all non-numeric characters
     const cleaned = phone.replace(/\D/g, "");
 
-    // Handle different formats
     if (cleaned.startsWith("62")) {
-      return cleaned; // Already in correct format (62xxx)
+      return cleaned;
     } else if (cleaned.startsWith("0")) {
-      return "62" + cleaned.substring(1); // Convert 08xxx to 628xxx
+      return "62" + cleaned.substring(1);
     } else if (cleaned.length >= 9) {
-      return "62" + cleaned; // Add 62 prefix
+      return "62" + cleaned;
     }
 
     return cleaned;
   };
 
-  // Phone number validation
   const isValidPhoneNumber = (phone: string): boolean => {
     const cleaned = phone.replace(/\D/g, "");
-
-    // Indonesian phone number patterns
-    const patterns = [
-      /^62[0-9]{9,13}$/, // 62xxxxxxxxx (9-13 digits after 62)
-      /^0[0-9]{9,12}$/, // 0xxxxxxxxx (9-12 digits after 0)
-      /^[0-9]{9,12}$/, // xxxxxxxxx (9-12 digits, will be prefixed with 62)
-    ];
-
+    const patterns = [/^62[0-9]{9,13}$/, /^0[0-9]{9,12}$/, /^[0-9]{9,12}$/];
     return patterns.some((pattern) => pattern.test(cleaned));
   };
 
   const validateForm = (): boolean => {
-    // Reset error
     setError(null);
 
     if (!formData.layananId) {
@@ -150,12 +159,12 @@ export default function CreateOrderPage() {
       return false;
     }
 
-    if (!formData.nomerHp.trim()) {
+    if (!formData.nomorHp.trim()) {
       setError("Nomor HP tidak boleh kosong");
       return false;
     }
 
-    if (!isValidPhoneNumber(formData.nomerHp)) {
+    if (!isValidPhoneNumber(formData.nomorHp)) {
       setError(
         "Format nomor HP tidak valid. Gunakan format: 08xxxxxxxxx atau 628xxxxxxxxx"
       );
@@ -185,36 +194,35 @@ export default function CreateOrderPage() {
     setSuccess(null);
 
     try {
-      // Format phone number before sending
-      const formattedPhone = formatPhoneNumber(formData.nomerHp);
+      const formattedPhone = formatPhoneNumber(formData.nomorHp);
 
       const orderData = {
         penggunaId: session.user.id,
         layananId: formData.layananId,
         namaPelanggan: formData.namaPelanggan.trim(),
         hargaDisepakati: parseFloat(formData.hargaDisepakati) || 0,
-        nomerHp: formattedPhone,
+        nomorHp: formattedPhone,
         lokasi: formData.lokasi.trim(),
         catatan: formData.catatan.trim() || null,
-        status: StatusPesanan.MENUNGGU,
+        status: StatusPesanan.PENGAJUAN,
       };
 
       const response = await axios.post("/api/pesanan", orderData);
 
       if (response.data.success) {
-        setSuccess("Pesanan berhasil dibuat!");
+        setSuccess(
+          "Pesanan berhasil diajukan! Anda akan segera dihubungi untuk konfirmasi."
+        );
 
-        // Reset form
         setFormData({
           layananId: null,
           namaPelanggan: "",
           hargaDisepakati: "0",
-          nomerHp: "",
+          nomorHp: "",
           lokasi: "",
           catatan: "",
         });
 
-        // Redirect after 2 seconds
         setTimeout(() => {
           router.push("/user/dashboard");
         }, 2000);
@@ -224,7 +232,6 @@ export default function CreateOrderPage() {
     } catch (error: any) {
       console.error("Error creating order:", error);
 
-      // Improved error handling
       let errorMessage = "Gagal membuat pesanan";
 
       if (error.response?.data?.error) {
@@ -233,7 +240,6 @@ export default function CreateOrderPage() {
         errorMessage = error.message;
       }
 
-      // Handle specific error cases
       if (errorMessage.includes("Format nomor HP tidak valid")) {
         errorMessage =
           "Format nomor HP tidak valid. Gunakan format: 08xxxxxxxxx atau +628xxxxxxxxx";
@@ -287,7 +293,7 @@ export default function CreateOrderPage() {
             Login Diperlukan
           </h2>
           <p className="text-gray-600 mb-6">
-            Anda harus login untuk membuat pesanan
+            Anda harus login untuk membuat pesanan jasa konstruksi
           </p>
           <button
             onClick={() => router.push("/login")}
@@ -300,27 +306,19 @@ export default function CreateOrderPage() {
     );
   }
 
-  const selectedLayanan = layananList.find((l) => l.id === formData.layananId);
-
-  return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Buat Pesanan Baru
-          </h1>
-          <p className="text-gray-600">
-            Isi form di bawah untuk membuat pesanan layanan
-          </p>
-        </div>
-
-        {/* Success Message */}
-        {success && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
-            <div className="flex items-center">
+  // TAMPILAN FORM PEMESANAN (Tahap 2)
+  if (showForm && selectedLayanan) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header */}
+          <div className="mb-6">
+            <button
+              onClick={handleBackToServices}
+              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium mb-4 transition-colors"
+            >
               <svg
-                className="w-5 h-5 text-green-600 mr-2"
+                className="w-5 h-5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -329,20 +327,365 @@ export default function CreateOrderPage() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M5 13l4 4L19 7"
+                  d="M15 19l-7-7 7-7"
                 />
               </svg>
-              <p className="text-green-800 font-medium">{success}</p>
+              Kembali ke Daftar Layanan
+            </button>
+
+            <div className="text-center">
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Form Pemesanan
+              </h1>
+              <p className="text-gray-600">
+                Lengkapi data untuk layanan:{" "}
+                <span className="font-semibold text-blue-600">
+                  {selectedLayanan.nama}
+                </span>
+              </p>
             </div>
+          </div>
+
+          {/* Success Message */}
+          {success && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+              <div className="flex items-center">
+                <svg
+                  className="w-5 h-5 text-green-600 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+                <p className="text-green-800 font-medium">{success}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Error Message */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+              <div className="flex items-center">
+                <svg
+                  className="w-5 h-5 text-red-600 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <p className="text-red-800 font-medium">{error}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Selected Service Info */}
+          <div className="mb-6 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+            <div className="flex items-start gap-4">
+              <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg
+                  className="w-8 h-8 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                  />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-blue-900 mb-1">
+                  {selectedLayanan.nama}
+                </h3>
+                {selectedLayanan.deskripsi && (
+                  <p className="text-sm text-blue-700 mb-2">
+                    {selectedLayanan.deskripsi}
+                  </p>
+                )}
+                {selectedLayanan.harga && (
+                  <p className="text-xl font-bold text-blue-900">
+                    Rp{" "}
+                    {parseFloat(
+                      selectedLayanan.harga.toString()
+                    ).toLocaleString("id-ID")}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Form */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              {/* Customer Info Section */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Informasi Pelanggan
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label
+                      htmlFor="namaPelanggan"
+                      className="block text-sm font-semibold text-gray-900 mb-2"
+                    >
+                      Nama Pelanggan *
+                    </label>
+                    <input
+                      type="text"
+                      id="namaPelanggan"
+                      name="namaPelanggan"
+                      value={formData.namaPelanggan}
+                      onChange={handleInputChange}
+                      placeholder="Masukkan nama lengkap"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="nomorHp"
+                      className="block text-sm font-semibold text-gray-900 mb-2"
+                    >
+                      Nomor WhatsApp *
+                    </label>
+                    <input
+                      type="tel"
+                      id="nomorHp"
+                      name="nomorHp"
+                      value={formData.nomorHp}
+                      onChange={handleInputChange}
+                      placeholder="08123456789"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      required
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Untuk konfirmasi dan koordinasi proyek
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Project Details Section */}
+              <div className="border-t border-gray-200 pt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Detail Proyek
+                </h3>
+
+                <div className="space-y-6">
+                  <div>
+                    <label
+                      htmlFor="lokasi"
+                      className="block text-sm font-semibold text-gray-900 mb-2"
+                    >
+                      Lokasi Proyek *
+                    </label>
+                    <input
+                      type="text"
+                      id="lokasi"
+                      name="lokasi"
+                      value={formData.lokasi}
+                      onChange={handleInputChange}
+                      placeholder="Alamat lengkap lokasi proyek konstruksi"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="catatan"
+                      className="block text-sm font-semibold text-gray-900 mb-2"
+                    >
+                      Deskripsi Proyek & Kebutuhan
+                    </label>
+                    <textarea
+                      id="catatan"
+                      name="catatan"
+                      value={formData.catatan}
+                      onChange={handleInputChange}
+                      rows={5}
+                      placeholder="Jelaskan detail proyek Anda: luas bangunan, spesifikasi khusus, timeline yang diinginkan, dll."
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Informasi detail akan membantu kami memberikan estimasi
+                      yang lebih akurat
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* User Info Display */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg
+                      className="w-6 h-6 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">
+                      Diajukan oleh
+                    </p>
+                    <p className="text-base font-semibold text-gray-900">
+                      {session.user?.name || session.user?.email}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <div className="pt-4">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-4 px-6 rounded-xl hover:from-blue-700 hover:to-indigo-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                >
+                  {loading ? <LoadingSpinner /> : "Ajukan Pesanan Sekarang"}
+                </button>
+                <p className="text-center text-sm text-gray-500 mt-3">
+                  Status akan diset ke{" "}
+                  <span className="font-semibold text-blue-600">PENGAJUAN</span>{" "}
+                  setelah submit
+                </p>
+              </div>
+            </form>
+          </div>
+
+          {/* Info Card */}
+          <div className="mt-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
+            <div className="flex items-start gap-4">
+              <svg
+                className="w-7 h-7 text-blue-600 flex-shrink-0 mt-0.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <div>
+                <h3 className="font-bold text-blue-900 mb-3 text-lg">
+                  Alur Proses Pesanan
+                </h3>
+                <ol className="text-sm text-blue-800 space-y-2">
+                  <li className="flex items-start gap-2">
+                    <span className="font-semibold text-blue-600 flex-shrink-0">
+                      1.
+                    </span>
+                    <span>
+                      <strong>Pengajuan:</strong> Pesanan masuk dengan status
+                      "PENGAJUAN"
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="font-semibold text-blue-600 flex-shrink-0">
+                      2.
+                    </span>
+                    <span>
+                      <strong>Notifikasi:</strong> Tim menghubungi via WhatsApp
+                      dalam 1x24 jam
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="font-semibold text-blue-600 flex-shrink-0">
+                      3.
+                    </span>
+                    <span>
+                      <strong>Survei:</strong> Teknisi survei lokasi untuk
+                      estimasi akurat
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="font-semibold text-blue-600 flex-shrink-0">
+                      4.
+                    </span>
+                    <span>
+                      <strong>Konfirmasi:</strong> Harga final disepakati
+                      setelah survei
+                    </span>
+                  </li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // TAMPILAN DAFTAR LAYANAN (Tahap 1)
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+            Layanan Jasa Konstruksi
+          </h1>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Pilih layanan konstruksi yang Anda butuhkan. Tim profesional kami
+            siap membantu mewujudkan proyek impian Anda.
+          </p>
+        </div>
+
+        {/* Loading State */}
+        {loadingLayanan && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div
+                key={i}
+                className="bg-white rounded-2xl shadow-md overflow-hidden"
+              >
+                <div className="h-48 bg-gray-200 animate-pulse"></div>
+                <div className="p-6 space-y-3">
+                  <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
+                  <div className="h-10 bg-gray-200 rounded animate-pulse mt-4"></div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
-        {/* Error Message */}
+        {/* Error State */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
-            <div className="flex items-center">
+          <div className="max-w-md mx-auto p-6 bg-red-50 border border-red-200 rounded-xl">
+            <div className="flex items-center gap-3">
               <svg
-                className="w-5 h-5 text-red-600 mr-2"
+                className="w-6 h-6 text-red-600"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -359,172 +702,14 @@ export default function CreateOrderPage() {
           </div>
         )}
 
-        {/* Form */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            {/* Service Selection */}
-            <div>
-              <label
-                htmlFor="layananId"
-                className="block text-sm font-semibold text-gray-900 mb-2"
-              >
-                Pilih Layanan *
-              </label>
-              {loadingLayanan ? (
-                <div className="h-12 bg-gray-100 rounded-xl animate-pulse"></div>
-              ) : (
-                <select
-                  id="layananId"
-                  name="layananId"
-                  value={formData.layananId || ""}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white"
-                  required
-                >
-                  <option value="">-- Pilih Layanan --</option>
-                  {layananList.map((layanan) => (
-                    <option key={layanan.id} value={layanan.id}>
-                      {layanan.nama}{" "}
-                      {layanan.hargaDasar &&
-                        `(Rp ${layanan.hargaDasar.toLocaleString("id-ID")})`}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              {/* Selected Service Preview */}
-              {selectedLayanan && (
-                <div className="mt-4 p-4 bg-blue-50 border border-blue-100 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    {selectedLayanan.urlGambar ? (
-                      <img
-                        src={selectedLayanan.urlGambar}
-                        alt={selectedLayanan.nama}
-                        className="w-12 h-12 rounded-lg object-cover"
-                      />
-                    ) : (
-                      <div className="w-12 h-12 bg-blue-200 rounded-lg flex items-center justify-center">
-                        <svg
-                          className="w-6 h-6 text-blue-600"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                          />
-                        </svg>
-                      </div>
-                    )}
-                    <div>
-                      <h3 className="font-medium text-blue-900">
-                        {selectedLayanan.nama}
-                      </h3>
-                      {selectedLayanan.deskripsi && (
-                        <p className="text-sm text-blue-700 mt-1">
-                          {selectedLayanan.deskripsi}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Customer Name and Phone Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label
-                  htmlFor="namaPelanggan"
-                  className="block text-sm font-semibold text-gray-900 mb-2"
-                >
-                  Nama Pelanggan *
-                </label>
-                <input
-                  type="text"
-                  id="namaPelanggan"
-                  name="namaPelanggan"
-                  value={formData.namaPelanggan}
-                  onChange={handleInputChange}
-                  placeholder="Masukkan nama pelanggan"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  required
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="nomerHp"
-                  className="block text-sm font-semibold text-gray-900 mb-2"
-                >
-                  Nomor HP *
-                </label>
-                <input
-                  type="tel"
-                  id="nomerHp"
-                  name="nomerHp"
-                  value={formData.nomerHp}
-                  onChange={handleInputChange}
-                  placeholder="08123456789 atau +628123456789"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  required
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Format: 08xxxxxxxxx atau +628xxxxxxxxx
-                </p>
-              </div>
-            </div>
-
-            {/* Price Field (Optional) */}
-
-            {/* Location */}
-            <div>
-              <label
-                htmlFor="lokasi"
-                className="block text-sm font-semibold text-gray-900 mb-2"
-              >
-                Lokasi Proyek *
-              </label>
-              <input
-                type="text"
-                id="lokasi"
-                name="lokasi"
-                value={formData.lokasi}
-                onChange={handleInputChange}
-                placeholder="Masukkan alamat lengkap proyek"
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                required
-              />
-            </div>
-
-            {/* Notes */}
-            <div>
-              <label
-                htmlFor="catatan"
-                className="block text-sm font-semibold text-gray-900 mb-2"
-              >
-                Catatan Tambahan
-              </label>
-              <textarea
-                id="catatan"
-                name="catatan"
-                value={formData.catatan}
-                onChange={handleInputChange}
-                rows={4}
-                placeholder="Berikan detail tambahan tentang proyek Anda..."
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
-              />
-            </div>
-
-            {/* User Info Display */}
-            <div className="bg-gray-50 rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+        {/* Service Cards */}
+        {!loadingLayanan && !error && (
+          <>
+            {layananList.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
                   <svg
-                    className="w-5 h-5 text-blue-600"
+                    className="w-10 h-10 text-gray-400"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -533,61 +718,129 @@ export default function CreateOrderPage() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
                     />
                   </svg>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Pemesan</p>
-                  <p className="text-sm text-gray-600">
-                    {session.user?.name || session.user?.email}
-                  </p>
-                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  Belum Ada Layanan
+                </h3>
+                <p className="text-gray-600">
+                  Layanan konstruksi akan segera tersedia.
+                </p>
               </div>
-            </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {layananList.map((layanan) => (
+                  <div
+                    key={layanan.id}
+                    className="bg-white rounded-2xl shadow-md hover:shadow-2xl transition-all duration-300 overflow-hidden group border border-gray-100"
+                  >
+                    {/* Card Image/Icon */}
+                    <div className="h-52 bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center relative overflow-hidden">
+                      <div className="absolute inset-0 bg-black opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                      <svg
+                        className="w-24 h-24 text-white transform group-hover:scale-110 transition-transform duration-300"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                        />
+                      </svg>
+                    </div>
 
-            {/* Submit Button */}
-            <div className="pt-4">
-              <button
-                type="submit"
-                disabled={loading || loadingLayanan}
-                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold py-4 px-6 rounded-xl hover:from-blue-700 hover:to-blue-800 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
-              >
-                {loading ? <LoadingSpinner /> : "Buat Pesanan"}
-              </button>
-            </div>
-          </form>
-        </div>
+                    {/* Card Content */}
+                    <div className="p-6">
+                      <h3 className="text-xl font-bold text-gray-900 mb-3 line-clamp-2 min-h-[3.5rem]">
+                        {layanan.nama}
+                      </h3>
 
-        {/* Info Card */}
-        <div className="mt-8 bg-blue-50 border border-blue-100 rounded-xl p-6">
-          <div className="flex items-start gap-3">
-            <svg
-              className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <div>
-              <h3 className="font-semibold text-blue-900 mb-2">
-                Informasi Penting
-              </h3>
-              <ul className="text-sm text-blue-800 space-y-1">
-                <li>• Pesanan akan diproses dalam 1x24 jam</li>
-                <li>• Anda akan dihubungi via WhatsApp untuk konfirmasi</li>
-                <li>• Harga dapat berubah setelah survei lokasi</li>
-                <li>• Status pesanan dapat dipantau di dashboard</li>
-              </ul>
-            </div>
-          </div>
-        </div>
+                      {layanan.deskripsi && (
+                        <p className="text-gray-600 text-sm mb-4 line-clamp-3 min-h-[4.5rem]">
+                          {layanan.deskripsi}
+                        </p>
+                      )}
+
+                      {/* Price */}
+                      <div className="mb-6">
+                        {layanan.harga ? (
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-sm text-gray-500">
+                              Mulai dari
+                            </span>
+                            <span className="text-2xl font-bold text-blue-600">
+                              Rp{" "}
+                              {parseFloat(
+                                layanan.harga.toString()
+                              ).toLocaleString("id-ID")}{" "}
+                              <span className="text-base font-medium text-gray-600">
+                                / meter persegi
+                              </span>
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-lg font-semibold text-gray-700">
+                              Harga Disesuaikan
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Order Button */}
+                      <button
+                        onClick={() => handleSelectLayanan(layanan)}
+                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-3 px-6 rounded-xl hover:from-blue-700 hover:to-indigo-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                      >
+                        <span className="flex items-center justify-center gap-2">
+                          Pesan Sekarang
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M13 7l5 5m0 0l-5 5m5-5H6"
+                            />
+                          </svg>
+                        </span>
+                      </button>
+                    </div>
+
+                    {/* Badge (Optional) */}
+                    <div className="px-6 pb-6">
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        <span>Gratis Konsultasi & Survei</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

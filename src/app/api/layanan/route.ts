@@ -32,7 +32,7 @@ export async function GET() {
 // POST - Buat layanan baru
 export async function POST(request: NextRequest) {
   try {
-    const { nama, deskripsi, urlGambar } = await request.json();
+    const { nama, deskripsi, harga } = await request.json();
 
     if (!nama) {
       return NextResponse.json(
@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
       data: {
         nama,
         deskripsi,
+        harga,
       },
     });
 

@@ -7,65 +7,91 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Model Admin
 model Admin {
-  id             Int      @id @default(autoincrement())      // ID Admin
-  nama           String                                       // Nama Admin
-  email          String   @unique                            // Email Admin
-  kataSandi      String                                       // Kata sandi yang di-hash
-  dibuatPada     DateTime @default(now())                    // Tanggal dibuat
+  id             Int      @id @default(autoincrement())
+  nama           String
+  email          String   @unique
+  kataSandi      String
+  
+  // Relasi
+  pembayaranVerifikasi Pembayaran[] @relation("VerifikasiPembayaran")
 }
 
+// Model Pengguna
 model Pengguna {
-  id         Int      @id @default(autoincrement())          // ID Pengguna
+  id         Int      @id @default(autoincrement())
   nama       String
-  email      String   @unique                                // Email pengguna
-  googleId   String   @unique                                // ID Google OAuth
-  dibuatPada DateTime @default(now())                        // Tanggal dibuat
-
-  pesanan    Pesanan[]                                        // Relasi ke pesanan
+  email      String   @unique
+  googleId   String   @unique
+  
+  // Relasi
+  pesanan    Pesanan[]
 }
 
+// Model Layanan
 model Layanan {
-  id          Int      @id @default(autoincrement())          // ID Layanan
-  nama        String                                           // Nama layanan
-  deskripsi   String?                                          // Deskripsi layanan        
-  dibuatPada  DateTime @default(now())                        // Tanggal dibuat
-  pesanan     Pesanan[]                                        // Relasi ke pesanan
+  id          Int      @id @default(autoincrement())
+  nama        String
+  deskripsi   String?
+  harga       Decimal? @db.Decimal(12, 2)
+  
+  // Relasi
+  pesanan     Pesanan[]
 }
 
+// Model Pesanan
 model Pesanan {
-  id               Int           @id @default(autoincrement())       // ID Pesanan
-  pengguna         Pengguna?      @relation(fields: [penggunaId], references: [id], onDelete: Cascade)
-  namaPelanggan    String        @default("tes")
-  penggunaId       Int?                                            // ID pengguna pemesan
+  id               Int           @id @default(autoincrement())
+  pengguna         Pengguna?     @relation(fields: [penggunaId], references: [id], onDelete: Cascade)
+  penggunaId       Int?
+  namaPelanggan    String
   layanan          Layanan?      @relation(fields: [layananId], references: [id])
-  layananId        Int?                                            // Layanan yang dipilih
-  hargaDisepakati  Decimal?                                        // Harga yang disepakati
-  tanggalPesan     DateTime                                         // Tanggal pemesanan
-  nomerHp          String
-  status           StatusPesanan @default(PENGAJUAN)                 // Status pesanan
-  lokasi           String?                                          // Lokasi proyek
-  catatan          String?                                          // Catatan tambahan
-  dibuatPada       DateTime      @default(now())                    // Tanggal dibuat
-  progres          ProgresPesanan[]                                // Relasi progres pesanan
+  layananId        Int?
+  hargaDisepakati  Decimal?      @db.Decimal(12, 2)
+  nomorHp          String
+  status           StatusPesanan @default(PENGAJUAN)
+  lokasi           String?
+  catatan          String?
+  catatanAdmin     String?
+  dibuatPada       DateTime      @default(now())
+  diperbaruiPada   DateTime      @updatedAt
+  
+  // Relasi
+  pembayaran       Pembayaran?
 }
 
-model ProgresPesanan {
-  id               Int      @id @default(autoincrement())           // ID progres
-  pesanan          Pesanan  @relation(fields: [pesananId], references: [id], onDelete: Cascade)
-  pesananId        Int                                           // Pesanan terkait
-  keterangan       String?                                       // Penjelasan progres
-  persenProgres    Int                                           // Persentase pengerjaan
-  urlDokumentasi   String?                                       // Gambar dokumentasi
-  diperbaruiPada   DateTime @default(now())                      // Tanggal diperbarui
+// Model Pembayaran
+model Pembayaran {
+  id                  Int              @id @default(autoincrement())
+  pesanan             Pesanan          @relation(fields: [pesananId], references: [id], onDelete: Cascade)
+  pesananId           Int              @unique
+  jumlah              Decimal          @db.Decimal(12, 2)
+  metodePembayaran    String?
+  buktiPembayaran     String?
+  statusPembayaran    StatusBayar      @default(BELUM_BAYAR)
+  tanggalBayar        DateTime?
+  diverifikasiOleh    Admin?           @relation("VerifikasiPembayaran", fields: [diverifikasiOlehId], references: [id])
+  diverifikasiOlehId  Int?
+  tanggalVerifikasi   DateTime?
+  alasanPenolakan     String?
+  dibuatPada          DateTime         @default(now())
+  diperbaruiPada      DateTime         @updatedAt
 }
 
-
-
+// Enum Status Pesanan
 enum StatusPesanan {
   PENGAJUAN
-  SURVEI
-  PENGERJAAN
+  DITERIMA
+  DITOLAK
+  PROSES_PEMBANGUNAN
   SELESAI
-  DIBATALKAN
+}
+
+// Enum Status Pembayaran
+enum StatusBayar {
+  BELUM_BAYAR
+  MENUNGGU_VERIFIKASI
+  DIVERIFIKASI
+  DITOLAK
 }

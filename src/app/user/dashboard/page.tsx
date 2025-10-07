@@ -1,277 +1,43 @@
 "use client";
 import { useSession, signOut } from "next-auth/react";
-import { useEffect, useState } from "react";
-import axios from "axios";
 import { useRouter } from "next/navigation";
-
-interface Pesanan {
-  id: number;
-  layanan: {
-    nama: string;
-    urlGambar?: string;
-  } | null;
-  hargaDisepakati: string;
-  status: string;
-  lokasi: string;
-  catatan: string;
-  tanggalPesan: string;
-  progres: {
-    persenProgres: number;
-    keterangan?: string;
-    urlDokumentasi?: string;
-    diperbaruiPada: string;
-  }[];
-}
-
-const StatusBadge = ({ status }: { status: string }) => {
-  const getStatusStyle = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case "selesai":
-        return "bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 border border-emerald-200 shadow-sm";
-      case "dalam_proses":
-      case "proses":
-        return "bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200 shadow-sm";
-      case "menunggu":
-        return "bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700 border border-amber-200 shadow-sm";
-      case "dibatalkan":
-        return "bg-gradient-to-r from-gray-50 to-slate-50 text-gray-700 border border-gray-200 shadow-sm";
-      default:
-        return "bg-gradient-to-r from-gray-50 to-slate-50 text-gray-700 border border-gray-200 shadow-sm";
-    }
-  };
-
-  const formatStatus = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case "dalam_proses":
-        return "Dalam Proses";
-      case "selesai":
-        return "Selesai";
-      case "menunggu":
-        return "Menunggu";
-      case "dibatalkan":
-        return "Dibatalkan";
-      default:
-        return status;
-    }
-  };
-
-  return (
-    <div
-      className={`inline-flex items-center px-3 py-1.5 rounded-xl text-sm font-semibold backdrop-blur-sm ${getStatusStyle(
-        status
-      )}`}
-    >
-      <div className="w-2 h-2 rounded-full bg-current mr-2 opacity-75"></div>
-      {formatStatus(status)}
-    </div>
-  );
-};
-
-const ProgressBar = ({ progress }: { progress: number }) => (
-  <div className="w-full space-y-2">
-    <div className="flex justify-between items-center">
-      <span className="text-sm font-medium text-gray-700">
-        Progress Pengerjaan
-      </span>
-      <span className="text-sm font-bold text-gray-900 bg-gray-100 px-2 py-1 rounded-lg">
-        {progress}%
-      </span>
-    </div>
-    <div className="relative">
-      <div className="w-full bg-gradient-to-r from-gray-100 to-gray-200 rounded-full h-3 shadow-inner">
-        <div
-          className="bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 h-3 rounded-full transition-all duration-700 ease-out shadow-sm relative overflow-hidden"
-          style={{ width: `${Math.min(progress, 100)}%` }}
-        >
-          <div className="absolute inset-0 bg-white opacity-30 animate-pulse rounded-full"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-const EmptyState = () => (
-  <div className="text-center py-20">
-    <div className="relative mx-auto mb-8">
-      <div className="w-24 h-24 mx-auto bg-gradient-to-br from-blue-50 to-indigo-100 rounded-3xl flex items-center justify-center shadow-lg">
-        <svg
-          className="w-10 h-10 text-blue-500"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-          />
-        </svg>
-      </div>
-      <div className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-r from-pink-400 to-red-400 rounded-full shadow-lg"></div>
-    </div>
-    <h3 className="text-2xl font-bold text-gray-900 mb-3">Belum Ada Pesanan</h3>
-    <p className="text-gray-600 max-w-md mx-auto mb-8 leading-relaxed">
-      Mulai perjalanan Anda dengan memesan layanan yang tersedia. Riwayat
-      pesanan akan muncul di sini.
-    </p>
-    href="/user/pemesanan" className="inline-flex items-center px-6 py-3
-    bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold
-    rounded-xl hover:shadow-lg transform hover:-translate-y-0.5 transition-all
-    duration-200"
-    <a>
-      <svg
-        className="w-5 h-5 mr-2"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-        />
-      </svg>
-      Buat Pesanan Pertama
-    </a>
-  </div>
-);
-
-const LoadingState = () => (
-  <div className="space-y-6">
-    {[1, 2, 3].map((i) => (
-      <div
-        key={i}
-        className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm animate-pulse"
-      >
-        <div className="flex items-center gap-6 mb-6">
-          <div className="w-20 h-20 bg-gradient-to-br from-gray-200 to-gray-300 rounded-2xl"></div>
-          <div className="flex-1 space-y-3">
-            <div className="h-6 bg-gray-200 rounded-lg w-3/4"></div>
-            <div className="h-4 bg-gray-200 rounded-lg w-1/2"></div>
-            <div className="h-4 bg-gray-200 rounded-lg w-1/3"></div>
-          </div>
-        </div>
-        <div className="space-y-4">
-          <div className="h-3 bg-gray-200 rounded-full w-full"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="h-4 bg-gray-200 rounded-lg"></div>
-            <div className="h-4 bg-gray-200 rounded-lg"></div>
-          </div>
-        </div>
-      </div>
-    ))}
-  </div>
-);
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { data: session, status: authStatus } = useSession();
-  const [pesanan, setPesanan] = useState<Pesanan[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [filterStatus, setFilterStatus] = useState<string>("semua");
-
-  useEffect(() => {
-    const fetchPesanan = async () => {
-      if (session?.user?.id) {
-        try {
-          const res = await axios.get(
-            `/api/pesanan?penggunaId=${session.user.id}`
-          );
-          const data = Array.isArray(res.data.data) ? res.data.data : [];
-          setPesanan(data);
-          setError(null);
-        } catch (error) {
-          console.error("Error fetching pesanan:", error);
-          setError("Gagal memuat data pesanan");
-          setPesanan([]);
-        } finally {
-          setLoading(false);
-        }
-      } else if (authStatus !== "loading") {
-        setLoading(false);
-      }
-    };
-    fetchPesanan();
-  }, [session, authStatus]);
+  const { data: session } = useSession();
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: "/" });
   };
 
-  const filteredPesanan =
-    filterStatus === "semua"
-      ? pesanan
-      : pesanan.filter(
-          (p) => p.status.toLowerCase() === filterStatus.toLowerCase()
-        );
-  const handleCardClick = (pesananId: number) => {
-    router.push(`/user/pesanan/${pesananId}`);
+  const handleMyOrders = () => {
+    router.push("/user/pesanan");
   };
-  const statusCounts = {
-    semua: pesanan.length,
-    menunggu: pesanan.filter((p) => p.status.toLowerCase() === "menunggu")
-      .length,
-    dalam_proses: pesanan.filter(
-      (p) => p.status.toLowerCase() === "dalam_proses"
-    ).length,
-    selesai: pesanan.filter((p) => p.status.toLowerCase() === "selesai").length,
-    dibatalkan: pesanan.filter((p) => p.status.toLowerCase() === "dibatalkan")
-      .length,
+
+  const handleCreateOrder = () => {
+    router.push("/user/pemesanan");
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40">
-      <div className="max-w-6xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
-        {/* Modern Header */}
-        <div className="mb-12 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-1 h-8 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-full"></div>
-              <h1 className="text-xl md:text-4xl font-black text-gray-900 tracking-tight">
-                Riwayat Pesanan
+      {/* Header */}
+      <header className="bg-white shadow-md border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+            <div className="w-full sm:w-auto">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                Arfilla Jaya Putra
               </h1>
+              <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2 font-medium">
+                Selamat datang, {session?.user?.name || "User"}
+              </p>
             </div>
-            <p className="text-md md:text-lg text-gray-600 font-medium">
-              Pantau progres dan kelola semua pesanan layanan Anda
-            </p>
-            {pesanan.length > 0 && (
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                <span>{pesanan.length} pesanan total</span>
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <a
-              href="/user/pemesanan"
-              className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-2xl hover:shadow-xl hover:shadow-blue-500/25 transform hover:-translate-y-1 transition-all duration-300 group"
-            >
-              <svg
-                className="w-5 h-5 mr-2 group-hover:rotate-90 transition-transform duration-300"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                />
-              </svg>
-              Buat Pesanan Baru
-            </a>
-
             <button
               onClick={handleLogout}
-              className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-red-600 to-pink-600 text-white font-semibold rounded-2xl hover:shadow-xl hover:shadow-red-500/25 transform hover:-translate-y-1 transition-all duration-300 group"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-red-600 to-pink-600 text-white text-sm sm:text-base font-semibold rounded-xl sm:rounded-2xl hover:shadow-xl hover:shadow-red-500/25 transform hover:-translate-y-1 transition-all duration-300 group"
             >
               <svg
-                className="w-5 h-5 mr-2 group-hover:translate-x-1 transition-transform duration-300"
+                className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform duration-300"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -287,94 +53,19 @@ export default function DashboardPage() {
             </button>
           </div>
         </div>
+      </header>
 
-        {/* Filter Status */}
-        {!loading && pesanan.length > 0 && (
-          <div className="mb-8 bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-            <div className="flex items-center gap-3 mb-4">
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 max-w-4xl mx-auto">
+          {/* Pesanan Saya Button */}
+          <button
+            onClick={handleMyOrders}
+            className="group bg-white rounded-2xl sm:rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 p-6 sm:p-10 lg:p-12 flex flex-col items-center justify-center gap-4 sm:gap-6 hover:scale-105 border border-gray-100 hover:border-blue-200"
+          >
+            <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl sm:rounded-3xl flex items-center justify-center group-hover:bg-gradient-to-br group-hover:from-blue-200 group-hover:to-indigo-200 transition-all duration-300 shadow-lg">
               <svg
-                className="w-5 h-5 text-blue-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-                />
-              </svg>
-              <h3 className="text-lg font-bold text-gray-900">Filter Status</h3>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => setFilterStatus("semua")}
-                className={`px-5 py-2.5 rounded-xl font-semibold transition-all duration-300 ${
-                  filterStatus === "semua"
-                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30 transform scale-105"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                Semua ({statusCounts.semua})
-              </button>
-
-              <button
-                onClick={() => setFilterStatus("menunggu")}
-                className={`px-5 py-2.5 rounded-xl font-semibold transition-all duration-300 ${
-                  filterStatus === "menunggu"
-                    ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30 transform scale-105"
-                    : "bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200"
-                }`}
-              >
-                Menunggu ({statusCounts.menunggu})
-              </button>
-
-              <button
-                onClick={() => setFilterStatus("dalam_proses")}
-                className={`px-5 py-2.5 rounded-xl font-semibold transition-all duration-300 ${
-                  filterStatus === "dalam_proses"
-                    ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg shadow-blue-500/30 transform scale-105"
-                    : "bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
-                }`}
-              >
-                Dalam Proses ({statusCounts.dalam_proses})
-              </button>
-
-              <button
-                onClick={() => setFilterStatus("selesai")}
-                className={`px-5 py-2.5 rounded-xl font-semibold transition-all duration-300 ${
-                  filterStatus === "selesai"
-                    ? "bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg shadow-emerald-500/30 transform scale-105"
-                    : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
-                }`}
-              >
-                Selesai ({statusCounts.selesai})
-              </button>
-
-              <button
-                onClick={() => setFilterStatus("dibatalkan")}
-                className={`px-5 py-2.5 rounded-xl font-semibold transition-all duration-300 ${
-                  filterStatus === "dibatalkan"
-                    ? "bg-gradient-to-r from-gray-600 to-slate-600 text-white shadow-lg shadow-gray-500/30 transform scale-105"
-                    : "bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200"
-                }`}
-              >
-                Dibatalkan ({statusCounts.dibatalkan})
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Content */}
-        {loading ? (
-          <LoadingState />
-        ) : error ? (
-          <div className="text-center py-20">
-            <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-red-50 to-pink-100 rounded-3xl flex items-center justify-center shadow-lg">
-              <svg
-                className="w-10 h-10 text-red-500"
+                className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 text-blue-600"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -383,41 +74,28 @@ export default function DashboardPage() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={1.5}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
                 />
               </svg>
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-3">
-              Terjadi Kesalahan
-            </h3>
-            <p className="text-gray-600 max-w-md mx-auto mb-8">{error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
-            >
+            <div className="text-center">
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-gray-900 mb-1 sm:mb-2">
+                Pesanan Saya
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 font-medium px-2">
+                Lihat dan kelola pesanan Anda
+              </p>
+            </div>
+          </button>
+
+          {/* Buat Pesanan Button */}
+          <button
+            onClick={handleCreateOrder}
+            className="group bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl sm:rounded-3xl shadow-lg hover:shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 p-6 sm:p-10 lg:p-12 flex flex-col items-center justify-center gap-4 sm:gap-6 hover:scale-105"
+          >
+            <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 bg-white/20 backdrop-blur-sm rounded-2xl sm:rounded-3xl flex items-center justify-center group-hover:bg-white/30 transition-all duration-300 shadow-lg">
               <svg
-                className="w-5 h-5 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              Muat Ulang
-            </button>
-          </div>
-        ) : !Array.isArray(pesanan) || pesanan.length === 0 ? (
-          <EmptyState />
-        ) : filteredPesanan.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-3xl flex items-center justify-center shadow-lg">
-              <svg
-                className="w-10 h-10 text-blue-500"
+                className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 text-white group-hover:rotate-90 transition-transform duration-300"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -426,128 +104,23 @@ export default function DashboardPage() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={1.5}
-                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
                 />
               </svg>
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-3">
-              Tidak Ada Pesanan
-            </h3>
-            <p className="text-gray-600 max-w-md mx-auto mb-8">
-              Tidak ada pesanan dengan status "
-              {filterStatus === "dalam_proses"
-                ? "Dalam Proses"
-                : filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1)}
-              "
-            </p>
-            <button
-              onClick={() => setFilterStatus("semua")}
-              className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
-            >
-              Lihat Semua Pesanan
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-8">
-            {filteredPesanan.map((p, index) => {
-              const latestProgress = p.progres.at(-1);
-              const progress = latestProgress?.persenProgres ?? 0;
+            <div className="text-center">
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-white mb-1 sm:mb-2">
+                Buat Pesanan
+              </h2>
+              <p className="text-sm sm:text-base text-blue-100 font-medium px-2">
+                Buat pesanan baru dengan mudah
+              </p>
+            </div>
+          </button>
+        </div>
 
-              return (
-                <div
-                  key={p.id}
-                  onClick={() => handleCardClick(p.id)}
-                  className="group bg-white rounded-3xl border border-gray-100 hover:border-blue-200 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/10 transform hover:-translate-y-1"
-                  style={{ animationDelay: `${index * 100}ms` }}
-                >
-                  {/* Card Header */}
-                  <div className="p-8 pb-6">
-                    <div className="flex items-start gap-6">
-                      {p.layanan?.urlGambar ? (
-                        <div className="hidden md:relative md:overflow-hidden md:rounded-2xl md:w-24 md:h-24 md:flex-shrink-0 md:ring-4 md:ring-gray-100 group-hover:md:ring-blue-100 transition-all duration-300">
-                          <img
-                            src={p.layanan.urlGambar}
-                            alt={p.layanan.nama}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                        </div>
-                      ) : (
-                        <div className="hidden md:w-24 md:h-24 md:bg-gradient-to-br md:from-blue-100 md:via-indigo-100 md:to-purple-100 md:rounded-2xl md:flex md:items-center md:justify-center md:flex-shrink-0 md:ring-4 md:ring-gray-100 group-hover:md:ring-blue-100 transition-all duration-300">
-                          <svg
-                            className="w-10 h-10 text-blue-500"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={1.5}
-                              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                            />
-                          </svg>
-                        </div>
-                      )}
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-col sm:flex-row capitalize sm:items-start sm:justify-between gap-4 mb-4">
-                          <div className="min-w-0">
-                            <h2 className="text-2xl font-bold text-gray-900 truncate mb-2">
-                              {p.layanan?.nama ?? "Layanan Tidak Diketahui"}
-                            </h2>
-                            <div className="flex items-center gap-3">
-                              <div className="text-lg md:text-3xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                                Rp{" "}
-                                {Number(p.hargaDisepakati).toLocaleString(
-                                  "id-ID"
-                                )}
-                              </div>
-                              <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                                #{p.id.toString().padStart(4, "0")}
-                              </div>
-                            </div>
-                          </div>
-                          <StatusBadge status={p.status} />
-                        </div>
-
-                        <div className="flex items-center gap-2 text-sm text-gray-600 mb-6">
-                          <svg
-                            className="w-4 h-4 text-gray-400"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M8 7V3a1 1 0 011-1h6a1 1 0 011 1v4m-6 0v1m6-1v1M6 7h12a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V9a2 2 0 012-2z"
-                            />
-                          </svg>
-                          <span>
-                            Dipesan pada{" "}
-                            {new Date(p.tanggalPesan).toLocaleDateString(
-                              "id-ID",
-                              {
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                              }
-                            )}
-                          </span>
-                        </div>
-
-                        <ProgressBar progress={progress} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+        {/* Info Card */}
+      </main>
     </div>
   );
 }

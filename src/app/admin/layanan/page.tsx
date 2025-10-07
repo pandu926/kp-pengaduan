@@ -44,11 +44,7 @@ export default function LayananPage() {
             : value
           : "-",
     },
-    {
-      key: "dibuatPada",
-      label: "Dibuat",
-      render: (value) => formatDate(value),
-    },
+    { key: "harga", label: "Harga", render: (value) => `Rp ${value}` },
   ];
 
   const handleAdd = () => {

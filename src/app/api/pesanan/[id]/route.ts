@@ -33,11 +33,7 @@ export async function GET(
           },
         },
         layanan: true,
-        progres: {
-          orderBy: {
-            diperbaruiPada: "desc",
-          },
-        },
+        pembayaran: true,
       },
     });
 
@@ -146,11 +142,6 @@ export async function PUT(
           },
         },
         layanan: true,
-        progres: {
-          orderBy: {
-            diperbaruiPada: "desc",
-          },
-        },
       },
     });
 
@@ -182,54 +173,91 @@ export async function PUT(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
-    const pesananId = parseInt(id);
+    const id = parseInt(params.id);
+    const body = await request.json();
 
-    if (isNaN(pesananId)) {
+    // Cek pesanan exists
+    const pesanan = await prisma.pesanan.findUnique({
+      where: { id },
+      include: { pembayaran: true },
+    });
+
+    if (!pesanan) {
       return NextResponse.json(
-        { success: false, error: "ID pesanan tidak valid" },
-        { status: 400 }
+        { success: false, error: "Pesanan tidak ditemukan" },
+        { status: 404 }
       );
     }
 
-    const { status } = await request.json();
+    const updateData: any = {};
 
-    if (
-      !status ||
-      !Object.values(StatusPesanan).includes(status as StatusPesanan)
-    ) {
-      return NextResponse.json(
-        { success: false, error: "Status pesanan tidak valid" },
-        { status: 400 }
-      );
+    // Update status
+    if (body.status) {
+      updateData.status = body.status;
     }
 
-    const pesanan = await prisma.pesanan.update({
-      where: { id: pesananId },
-      data: { status: status as StatusPesanan },
+    // Update harga (jika status DITERIMA)
+    if (body.hargaDisepakati !== undefined) {
+      updateData.hargaDisepakati = body.hargaDisepakati;
+
+      // Auto-create pembayaran jika status DITERIMA dan belum ada pembayaran
+      if (body.status === "DITERIMA" && !pesanan.pembayaran) {
+        await prisma.pembayaran.create({
+          data: {
+            pesananId: id,
+            jumlah: body.hargaDisepakati,
+            statusPembayaran: "BELUM_BAYAR",
+          },
+        });
+      }
+    }
+
+    // Update catatan admin
+    if (body.catatanAdmin !== undefined) {
+      updateData.catatanAdmin = body.catatanAdmin;
+    }
+
+    // Update pesanan
+    const updatedPesanan = await prisma.pesanan.update({
+      where: { id },
+      data: updateData,
       include: {
-        pengguna: { select: { id: true, nama: true, email: true } },
+        pengguna: {
+          select: {
+            id: true,
+            nama: true,
+            email: true,
+          },
+        },
         layanan: true,
-        progres: { orderBy: { diperbaruiPada: "desc" } },
+        pembayaran: {
+          include: {
+            diverifikasiOleh: {
+              select: {
+                id: true,
+                nama: true,
+                email: true,
+              },
+            },
+          },
+        },
       },
     });
 
     return NextResponse.json({
       success: true,
-      data: pesanan,
-      message: `Status pesanan berhasil diubah ke ${status}`,
+      data: updatedPesanan,
+      message: "Pesanan berhasil diupdate",
     });
-  } catch (error: any) {
-    console.error("Error updating pesanan status:", error);
+  } catch (error) {
+    console.error("Error updating pesanan:", error);
     return NextResponse.json(
-      { success: false, error: "Gagal mengubah status pesanan" },
+      { success: false, error: "Gagal update pesanan" },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 

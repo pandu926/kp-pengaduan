@@ -31,11 +31,6 @@ export async function GET(request: NextRequest) {
           },
         },
         layanan: true,
-        progres: {
-          orderBy: {
-            diperbaruiPada: "desc",
-          },
-        },
       },
       orderBy: {
         dibuatPada: "desc",
@@ -124,7 +119,7 @@ export async function POST(request: NextRequest) {
       hargaDisepakati,
       lokasi,
       catatan,
-      nomerHp,
+      nomorHp,
       namaPelanggan,
     } = body;
 
@@ -136,7 +131,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!nomerHp || !nomerHp.trim()) {
+    if (!nomorHp || !nomorHp.trim()) {
       return NextResponse.json(
         { success: false, error: "Nomor HP tidak boleh kosong" },
         { status: 400 }
@@ -158,7 +153,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate phone number
-    const phoneValidation = validateAndFormatPhoneNumber(nomerHp);
+    const phoneValidation = validateAndFormatPhoneNumber(nomorHp);
     if (!phoneValidation.isValid) {
       return NextResponse.json(
         { success: false, error: phoneValidation.error },
@@ -212,7 +207,7 @@ export async function POST(request: NextRequest) {
         tanggalPesan: new Date(),
         lokasi: lokasi.trim(),
         catatan: catatan ? catatan.trim() : null,
-        nomerHp: phoneValidation.formatted!,
+        nomorHp: phoneValidation.formatted!,
         namaPelanggan: namaPelanggan.trim(),
         status: StatusPesanan.PENGAJUAN,
       },

@@ -49,13 +49,14 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const { nama, deskripsi, urlGambar } = await request.json();
+    const { nama, deskripsi, harga } = await request.json();
 
     const layanan = await prisma.layanan.update({
       where: { id: parseInt(id) },
       data: {
         nama,
         deskripsi,
+        harga,
       },
     });
 
