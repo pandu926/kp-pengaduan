@@ -22,6 +22,8 @@ import Swal from "sweetalert2";
 enum StatusPesanan {
   PENGAJUAN = "PENGAJUAN",
   DITERIMA = "DITERIMA",
+  PROSES_PEMBANGUNAN = "PROSES_PEMBANGUNAN",
+  PELUNASAN = "PELUNASAN", // ✅ Fixed: sesuaikan dengan Prisma
   DITOLAK = "DITOLAK",
   SELESAI = "SELESAI",
 }
@@ -50,6 +52,7 @@ interface Layanan {
 interface Pembayaran {
   id: number;
   jumlah: number;
+  tipePembayaran: "DP" | "PELUNASAN";
   metodePembayaran: string | null;
   buktiPembayaran: string | null;
   statusPembayaran: StatusBayar;
@@ -71,7 +74,7 @@ interface Pesanan {
   catatan: string | null;
   catatanAdmin: string | null;
   dibuatPada: string;
-  pembayaran: Pembayaran | null;
+  pembayaran: Pembayaran[];
 }
 
 const OrderDetailPage: React.FC = () => {
@@ -199,10 +202,8 @@ const OrderDetailPage: React.FC = () => {
     }
   };
 
-  // Verifikasi pembayaran
-  const handleVerifyPayment = async (approved: boolean) => {
-    if (!order?.pembayaran) return;
-
+  // Verifikasi pembayaran - FIXED with paymentId parameter
+  const handleVerifyPayment = async (paymentId: number, approved: boolean) => {
     const result = await Swal.fire({
       title: approved ? "Approve Pembayaran?" : "Reject Pembayaran?",
       text: approved
@@ -227,7 +228,7 @@ const OrderDetailPage: React.FC = () => {
 
     if (result.isConfirmed) {
       try {
-        await axios.patch(`/api/pembayaran/${order.pembayaran.id}`, {
+        await axios.patch(`/api/pembayaran/${paymentId}`, {
           action: "verifikasi",
           adminId: 1, // TODO: Get from session
           disetujui: approved,
@@ -258,25 +259,36 @@ const OrderDetailPage: React.FC = () => {
 
   // Status utilities
   const getStatusConfig = (status: StatusPesanan) => {
-    const configs = {
-      PENGAJUAN: {
+    const configs: Record<
+      StatusPesanan,
+      { color: string; icon: React.ElementType }
+    > = {
+      [StatusPesanan.PENGAJUAN]: {
         color: "bg-yellow-100 text-yellow-800 border-yellow-200",
         icon: Clock,
       },
-      DITERIMA: {
+      [StatusPesanan.DITERIMA]: {
         color: "bg-blue-100 text-blue-800 border-blue-200",
         icon: CheckCircle,
       },
-      DITOLAK: {
+      [StatusPesanan.DITOLAK]: {
         color: "bg-red-100 text-red-800 border-red-200",
         icon: XCircle,
       },
-      SELESAI: {
+      [StatusPesanan.SELESAI]: {
         color: "bg-emerald-100 text-emerald-800 border-emerald-200",
         icon: CheckCircle,
       },
+      [StatusPesanan.PROSES_PEMBANGUNAN]: {
+        color: "bg-indigo-100 text-indigo-800 border-indigo-200",
+        icon: Clock,
+      },
+      [StatusPesanan.PELUNASAN]: {
+        color: "bg-purple-100 text-purple-800 border-purple-200",
+        icon: DollarSign,
+      },
     };
-    return configs[status] || configs.PENGAJUAN;
+    return configs[status] || configs[StatusPesanan.PENGAJUAN];
   };
 
   const getPaymentStatusConfig = (status: StatusBayar) => {
@@ -311,14 +323,29 @@ const OrderDetailPage: React.FC = () => {
     }).format(amount);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Intl.DateTimeFormat("id-ID", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(new Date(dateString));
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) {
+      return "Tidak tersedia";
+    }
+
+    try {
+      const date = new Date(dateString);
+
+      if (isNaN(date.getTime())) {
+        return "Tanggal tidak valid";
+      }
+
+      return new Intl.DateTimeFormat("id-ID", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(date);
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "Tanggal tidak valid";
+    }
   };
 
   const handleSendWA = () => {
@@ -414,7 +441,6 @@ const OrderDetailPage: React.FC = () => {
                 </div>
 
                 <form onSubmit={handleSubmitUpdate} className="space-y-6">
-                  {/* Status */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Status Pesanan <span className="text-red-500">*</span>
@@ -434,11 +460,14 @@ const OrderDetailPage: React.FC = () => {
                       <option value={StatusPesanan.PENGAJUAN}>Pengajuan</option>
                       <option value={StatusPesanan.DITERIMA}>Diterima</option>
                       <option value={StatusPesanan.DITOLAK}>Ditolak</option>
+                      <option value={StatusPesanan.PROSES_PEMBANGUNAN}>
+                        Proses Pembangunan
+                      </option>
+                      <option value={StatusPesanan.PELUNASAN}>Pelunasan</option>
                       <option value={StatusPesanan.SELESAI}>Selesai</option>
                     </select>
                   </div>
 
-                  {/* Harga - Show if DITERIMA */}
                   {formData.status === StatusPesanan.DITERIMA && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -462,13 +491,9 @@ const OrderDetailPage: React.FC = () => {
                           required={formData.status === StatusPesanan.DITERIMA}
                         />
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Harga yang disepakati dengan pelanggan
-                      </p>
                     </div>
                   )}
 
-                  {/* Catatan Admin */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Catatan Admin
@@ -498,7 +523,6 @@ const OrderDetailPage: React.FC = () => {
                     />
                   </div>
 
-                  {/* Action Buttons */}
                   <div className="flex gap-3 pt-4 border-t border-gray-200">
                     <button
                       type="submit"
@@ -656,129 +680,157 @@ const OrderDetailPage: React.FC = () => {
               </div>
             )}
 
-            {/* Informasi Pembayaran */}
+            {/* Informasi Pembayaran - FIXED */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-6">
                 Informasi Pembayaran
               </h2>
 
-              {order.pembayaran ? (
-                <div className="space-y-6">
-                  {/* Status Pembayaran */}
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <span className="text-sm font-medium text-gray-700">
-                      Status Pembayaran
-                    </span>
-                    <span
-                      className={`px-3 py-1.5 rounded-full text-sm font-medium border ${
-                        getPaymentStatusConfig(
-                          order.pembayaran.statusPembayaran
-                        ).color
-                      }`}
+              {order.pembayaran && order.pembayaran.length > 0 ? (
+                <div className="space-y-4">
+                  {order.pembayaran.map((payment) => (
+                    <div
+                      key={payment.id}
+                      className="border border-gray-200 rounded-xl p-6 hover:border-blue-300 transition-colors"
                     >
-                      {
-                        getPaymentStatusConfig(
-                          order.pembayaran.statusPembayaran
-                        ).text
-                      }
-                    </span>
-                  </div>
-
-                  {/* Detail Pembayaran */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600 mb-1">Jumlah</p>
-                      <p className="text-lg font-bold text-gray-900">
-                        {formatCurrency(order.pembayaran.jumlah)}
-                      </p>
-                    </div>
-
-                    {order.pembayaran.metodePembayaran && (
-                      <div>
-                        <p className="text-sm text-gray-600 mb-1">
-                          Metode Pembayaran
-                        </p>
-                        <p className="text-base font-medium text-gray-900">
-                          {order.pembayaran.metodePembayaran}
-                        </p>
+                      {/* Header Pembayaran */}
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                              payment.tipePembayaran === "DP"
+                                ? "bg-blue-100"
+                                : "bg-purple-100"
+                            }`}
+                          >
+                            <DollarSign
+                              className={`w-5 h-5 ${
+                                payment.tipePembayaran === "DP"
+                                  ? "text-blue-600"
+                                  : "text-purple-600"
+                              }`}
+                            />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-900">
+                              Pembayaran {payment.tipePembayaran}
+                            </h3>
+                            <p className="text-sm text-gray-500">
+                              #{payment.id}
+                            </p>
+                          </div>
+                        </div>
+                        <span
+                          className={`px-3 py-1.5 rounded-full text-sm font-medium border ${
+                            getPaymentStatusConfig(payment.statusPembayaran)
+                              .color
+                          }`}
+                        >
+                          {
+                            getPaymentStatusConfig(payment.statusPembayaran)
+                              .text
+                          }
+                        </span>
                       </div>
-                    )}
 
-                    {order.pembayaran.tanggalBayar && (
-                      <div>
-                        <p className="text-sm text-gray-600 mb-1">
-                          Tanggal Bayar
-                        </p>
-                        <p className="text-sm text-gray-900">
-                          {formatDate(order.pembayaran.tanggalBayar)}
-                        </p>
+                      {/* Detail Pembayaran */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <p className="text-sm text-gray-600 mb-1">Jumlah</p>
+                          <p className="text-lg font-bold text-gray-900">
+                            {formatCurrency(payment.jumlah)}
+                          </p>
+                        </div>
+
+                        {payment.metodePembayaran && (
+                          <div>
+                            <p className="text-sm text-gray-600 mb-1">
+                              Metode Pembayaran
+                            </p>
+                            <p className="text-base font-medium text-gray-900">
+                              {payment.metodePembayaran}
+                            </p>
+                          </div>
+                        )}
+
+                        {payment.tanggalBayar && (
+                          <div>
+                            <p className="text-sm text-gray-600 mb-1">
+                              Tanggal Bayar
+                            </p>
+                            <p className="text-sm text-gray-900">
+                              {formatDate(payment.tanggalBayar)}
+                            </p>
+                          </div>
+                        )}
+
+                        {payment.tanggalVerifikasi && (
+                          <div>
+                            <p className="text-sm text-gray-600 mb-1">
+                              Tanggal Verifikasi
+                            </p>
+                            <p className="text-sm text-gray-900">
+                              {formatDate(payment.tanggalVerifikasi)}
+                            </p>
+                          </div>
+                        )}
                       </div>
-                    )}
 
-                    {order.pembayaran.tanggalVerifikasi && (
-                      <div>
-                        <p className="text-sm text-gray-600 mb-1">
-                          Tanggal Verifikasi
-                        </p>
-                        <p className="text-sm text-gray-900">
-                          {formatDate(order.pembayaran.tanggalVerifikasi)}
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                      {/* Bukti Pembayaran */}
+                      {payment.buktiPembayaran && (
+                        <div className="mb-4">
+                          <p className="text-sm font-medium text-gray-900 mb-3">
+                            Bukti Pembayaran
+                          </p>
+                          <img
+                            src={payment.buktiPembayaran}
+                            alt="Bukti Pembayaran"
+                            className="w-full max-w-md rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                            onClick={() =>
+                              window.open(payment.buktiPembayaran!, "_blank")
+                            }
+                          />
+                        </div>
+                      )}
 
-                  {/* Bukti Pembayaran */}
-                  {order.pembayaran.buktiPembayaran && (
-                    <div>
-                      <p className="text-sm font-medium text-gray-900 mb-3">
-                        Bukti Pembayaran
-                      </p>
-                      <img
-                        src={order.pembayaran.buktiPembayaran}
-                        alt="Bukti Pembayaran"
-                        className="w-full max-w-md rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                        onClick={() =>
-                          window.open(
-                            order.pembayaran!.buktiPembayaran!,
-                            "_blank"
-                          )
-                        }
-                      />
+                      {/* Alasan Penolakan */}
+                      {payment.alasanPenolakan && (
+                        <div className="p-4 bg-red-50 border border-red-200 rounded-lg mb-4">
+                          <p className="text-sm font-medium text-red-900 mb-2">
+                            Alasan Penolakan Pembayaran
+                          </p>
+                          <p className="text-sm text-red-700">
+                            {payment.alasanPenolakan}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Tombol Verifikasi */}
+                      {payment.statusPembayaran ===
+                        StatusBayar.MENUNGGU_VERIFIKASI && (
+                        <div className="flex gap-3 pt-4 border-t border-gray-200">
+                          <button
+                            onClick={() =>
+                              handleVerifyPayment(payment.id, true)
+                            }
+                            className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                          >
+                            <CheckCircle className="w-5 h-5" />
+                            Approve
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleVerifyPayment(payment.id, false)
+                            }
+                            className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                          >
+                            <XCircle className="w-5 h-5" />
+                            Reject
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  )}
-
-                  {/* Alasan Penolakan */}
-                  {order.pembayaran.alasanPenolakan && (
-                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                      <p className="text-sm font-medium text-red-900 mb-2">
-                        Alasan Penolakan Pembayaran
-                      </p>
-                      <p className="text-sm text-red-700">
-                        {order.pembayaran.alasanPenolakan}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Tombol Verifikasi */}
-                  {order.pembayaran.statusPembayaran ===
-                    StatusBayar.MENUNGGU_VERIFIKASI && (
-                    <div className="flex gap-3 pt-4 border-t border-gray-200">
-                      <button
-                        onClick={() => handleVerifyPayment(true)}
-                        className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-                      >
-                        <CheckCircle className="w-5 h-5" />
-                        Approve Pembayaran
-                      </button>
-                      <button
-                        onClick={() => handleVerifyPayment(false)}
-                        className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-                      >
-                        <XCircle className="w-5 h-5" />
-                        Reject Pembayaran
-                      </button>
-                    </div>
-                  )}
+                  ))}
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-500">
@@ -855,17 +907,29 @@ const OrderDetailPage: React.FC = () => {
                   <span className="text-gray-300">Status</span>
                   <span className="font-medium">{order.status}</span>
                 </div>
-                {order.pembayaran && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-300">Status Bayar</span>
-                    <span className="font-medium text-yellow-400">
-                      {
-                        getPaymentStatusConfig(
-                          order.pembayaran.statusPembayaran
-                        ).text
-                      }
-                    </span>
-                  </div>
+                {order.pembayaran && order.pembayaran.length > 0 && (
+                  <>
+                    {order.pembayaran.map((payment) => (
+                      <div key={payment.id} className="flex justify-between">
+                        <span className="text-gray-300">
+                          Status {payment.tipePembayaran}
+                        </span>
+                        <span
+                          className={`font-medium ${
+                            payment.statusPembayaran ===
+                            StatusBayar.DIVERIFIKASI
+                              ? "text-green-400"
+                              : "text-yellow-400"
+                          }`}
+                        >
+                          {
+                            getPaymentStatusConfig(payment.statusPembayaran)
+                              .text
+                          }
+                        </span>
+                      </div>
+                    ))}
+                  </>
                 )}
                 <div className="pt-3 border-t border-gray-700">
                   <div className="flex justify-between">

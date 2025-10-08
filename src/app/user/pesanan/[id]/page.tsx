@@ -2,9 +2,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useParams } from "next/navigation";
-import PaymentModal from "@/components/PaymentModal"; // Sesuaikan path
-
-const DP_PERCENTAGE = 0.2;
+import PaymentModal from "@/components/PaymentModal";
 
 // Fungsi generate kode unik (1-999)
 const generateKodeUnik = () => {
@@ -23,6 +21,27 @@ const OrderDetailUserPage: React.FC = () => {
 
   const params = useParams<{ id: string }>();
   const orderId = parseInt(params.id);
+
+  // Get pembayaran yang aktif berdasarkan status
+  const getActivePembayaran = () => {
+    if (!order?.pembayaran || order.pembayaran.length === 0) return null;
+
+    // Jika status DITERIMA, ambil pembayaran DP
+    if (order.status === "DITERIMA") {
+      return order.pembayaran.find((p: any) => p.tipePembayaran === "DP");
+    }
+
+    // Jika status PROSES_PEMBANGUNAN, ambil pembayaran PELUNASAN
+    if (order.status === "PELUNASAN") {
+      return order.pembayaran.find(
+        (p: any) => p.tipePembayaran === "PELUNASAN"
+      );
+    }
+
+    return null;
+  };
+
+  const activePembayaran = getActivePembayaran();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -53,35 +72,26 @@ const OrderDetailUserPage: React.FC = () => {
     }
   }, [orderId]);
 
-  // Auto open modal jika pesanan DITERIMA dan belum bayar
+  // Auto open modal jika ada pembayaran aktif yang belum bayar
   useEffect(() => {
-    if (
-      order?.status === "DITERIMA" &&
-      order?.hargaDisepakati &&
-      order?.pembayaran?.statusPembayaran === "BELUM_BAYAR"
-    ) {
+    if (activePembayaran?.statusPembayaran === "BELUM_BAYAR") {
       setShowPaymentModal(true);
     }
-  }, [order]);
+  }, [activePembayaran]);
 
-  const calculateDP = (totalHarga: number | null) => {
-    if (!totalHarga) return 0;
-    return totalHarga * DP_PERCENTAGE;
-  };
-
-  const calculateTotalPembayaran = (dpAmount: number) => {
-    return dpAmount + kodeUnik;
+  const calculateTotalPembayaran = (amount: number) => {
+    return amount + kodeUnik;
   };
 
   // Handler menerima URL gambar yang sudah diupload
   const handleUploadBukti = async (imageUrl: string) => {
-    if (!order?.pembayaran) return;
+    if (!activePembayaran) return;
 
     try {
       setUploadLoading(true);
 
       // Simpan URL gambar dan kode unik ke database
-      await axios.patch(`/api/pembayaran/${order.pembayaran.id}`, {
+      await axios.patch(`/api/pembayaran/${activePembayaran.id}`, {
         buktiPembayaran: imageUrl,
         metodePembayaran: "TRANSFER",
       });
@@ -96,7 +106,7 @@ const OrderDetailUserPage: React.FC = () => {
       setTimeout(() => setUploadSuccess(false), 3000);
     } catch (err) {
       console.error("Error saving payment:", err);
-      throw err; // Re-throw untuk ditangani di modal
+      throw err;
     } finally {
       setUploadLoading(false);
     }
@@ -120,6 +130,18 @@ const OrderDetailUserPage: React.FC = () => {
       hour: "2-digit",
       minute: "2-digit",
     }).format(new Date(dateString));
+  };
+
+  // Get label pembayaran
+  const getPaymentLabel = () => {
+    if (!activePembayaran) return "";
+    return activePembayaran.tipePembayaran === "DP" ? "DP" : "Pelunasan";
+  };
+
+  // Calculate persentase
+  const getPercentage = () => {
+    if (!activePembayaran || !order?.hargaDisepakati) return 0;
+    return (Number(activePembayaran.jumlah) / order.hargaDisepakati) * 100;
   };
 
   if (loading) {
@@ -150,10 +172,10 @@ const OrderDetailUserPage: React.FC = () => {
     );
   }
 
-  const dpAmount = calculateDP(order.hargaDisepakati);
-  const totalPembayaran = calculateTotalPembayaran(dpAmount);
+  const paymentAmount = activePembayaran ? Number(activePembayaran.jumlah) : 0;
+  const totalPembayaran = calculateTotalPembayaran(paymentAmount);
   const canShowPayment =
-    order?.status === "DITERIMA" && order?.hargaDisepakati && order?.pembayaran;
+    activePembayaran && activePembayaran.statusPembayaran === "BELUM_BAYAR";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
@@ -200,46 +222,51 @@ const OrderDetailUserPage: React.FC = () => {
           </div>
         )}
 
-        {/* Payment Button - Muncul jika DITERIMA */}
-        {canShowPayment &&
-          order.pembayaran.statusPembayaran === "BELUM_BAYAR" && (
-            <div className="mb-6">
-              <button
-                onClick={() => setShowPaymentModal(true)}
-                className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-3"
+        {/* Payment Button - Muncul sesuai status */}
+        {canShowPayment && (
+          <div className="mb-6">
+            <button
+              onClick={() => setShowPaymentModal(true)}
+              className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-3"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-                  />
-                </svg>
-                <span>
-                  Bayar DP Sekarang - {formatCurrency(totalPembayaran)}
-                </span>
-              </button>
-            </div>
-          )}
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                />
+              </svg>
+              <span>
+                Bayar {getPaymentLabel()} Sekarang -{" "}
+                {formatCurrency(totalPembayaran)}
+              </span>
+            </button>
+          </div>
+        )}
 
         {/* Payment Modal */}
-        <PaymentModal
-          isOpen={showPaymentModal}
-          onClose={() => setShowPaymentModal(false)}
-          orderId={order.id}
-          dpAmount={dpAmount}
-          kodeUnik={kodeUnik}
-          totalPembayaran={totalPembayaran}
-          infoRekening={infoRekening}
-          onUploadBukti={handleUploadBukti}
-          uploadLoading={uploadLoading}
-        />
+        {activePembayaran && (
+          <PaymentModal
+            isOpen={showPaymentModal}
+            onClose={() => setShowPaymentModal(false)}
+            orderId={order.id}
+            dpAmount={paymentAmount}
+            kodeUnik={kodeUnik}
+            totalPembayaran={totalPembayaran}
+            infoRekening={infoRekening}
+            onUploadBukti={handleUploadBukti}
+            uploadLoading={uploadLoading}
+            typePembayaran={
+              activePembayaran.tipePembayaran as "DP" | "PELUNASAN"
+            }
+          />
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
@@ -266,7 +293,7 @@ const OrderDetailUserPage: React.FC = () => {
                   </h3>
                   <p className="text-sm text-amber-800 leading-relaxed">
                     Pesanan Anda sedang direview oleh admin. Anda akan menerima
-                    notifikasi pastikan nomer wa anda aktif .
+                    notifikasi pastikan nomer wa anda aktif.
                   </p>
                 </div>
               </div>
@@ -388,16 +415,19 @@ const OrderDetailUserPage: React.FC = () => {
                       </div>
                     </div>
 
-                    {canShowPayment && (
+                    {activePembayaran && (
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                         <p className="text-xs text-blue-700 mb-2">
-                          Rincian Pembayaran
+                          Rincian Pembayaran {getPaymentLabel()}
                         </p>
                         <div className="space-y-1 text-sm">
                           <div className="flex justify-between">
-                            <span className="text-blue-800">DP (20%):</span>
+                            <span className="text-blue-800">
+                              {getPaymentLabel()} ({getPercentage().toFixed(0)}
+                              %):
+                            </span>
                             <span className="font-semibold text-blue-900">
-                              {formatCurrency(dpAmount)}
+                              {formatCurrency(paymentAmount)}
                             </span>
                           </div>
                           <div className="flex justify-between">
@@ -412,6 +442,24 @@ const OrderDetailUserPage: React.FC = () => {
                             </span>
                             <span className="font-bold text-blue-900">
                               {formatCurrency(totalPembayaran)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="mt-3 pt-3 border-t border-blue-200">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-blue-700">Status:</span>
+                            <span
+                              className={`font-semibold ${
+                                activePembayaran.statusPembayaran ===
+                                "DIVERIFIKASI"
+                                  ? "text-green-700"
+                                  : activePembayaran.statusPembayaran ===
+                                    "MENUNGGU_VERIFIKASI"
+                                  ? "text-yellow-700"
+                                  : "text-gray-700"
+                              }`}
+                            >
+                              {activePembayaran.statusPembayaran}
                             </span>
                           </div>
                         </div>
@@ -468,6 +516,53 @@ const OrderDetailUserPage: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {/* Payment History */}
+            {order.pembayaran && order.pembayaran.length > 0 && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                  Riwayat Pembayaran
+                </h2>
+                <div className="space-y-3">
+                  {order.pembayaran.map((payment: any, index: number) => (
+                    <div
+                      key={payment.id}
+                      className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-gray-900">
+                            {payment.tipePembayaran}
+                          </span>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                              payment.statusPembayaran === "DIVERIFIKASI"
+                                ? "bg-green-100 text-green-800"
+                                : payment.statusPembayaran ===
+                                  "MENUNGGU_VERIFIKASI"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : payment.statusPembayaran === "DITOLAK"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {payment.statusPembayaran}
+                          </span>
+                        </div>
+                        <span className="font-bold text-gray-900">
+                          {formatCurrency(Number(payment.jumlah))}
+                        </span>
+                      </div>
+                      {payment.tanggalBayar && (
+                        <p className="text-xs text-gray-500">
+                          Dibayar: {formatDate(payment.tanggalBayar)}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Sidebar */}
@@ -516,11 +611,13 @@ const OrderDetailUserPage: React.FC = () => {
                   <span className="text-gray-300">Status Pesanan</span>
                   <span className="font-medium">{order.status}</span>
                 </div>
-                {order.pembayaran && (
+                {activePembayaran && (
                   <div className="flex justify-between">
-                    <span className="text-gray-300">Status Bayar</span>
+                    <span className="text-gray-300">
+                      Status {getPaymentLabel()}
+                    </span>
                     <span className="font-medium text-yellow-400">
-                      {order.pembayaran.statusPembayaran}
+                      {activePembayaran.statusPembayaran}
                     </span>
                   </div>
                 )}
@@ -531,20 +628,25 @@ const OrderDetailUserPage: React.FC = () => {
                       {formatCurrency(order.hargaDisepakati)}
                     </span>
                   </div>
-                  {order.hargaDisepakati && (
+                  {order.pembayaran && order.pembayaran.length > 0 && (
                     <div className="space-y-1 text-sm">
-                      <div className="flex justify-between text-gray-400">
-                        <span>• DP (20%)</span>
-                        <span className="text-green-400 font-medium">
-                          {formatCurrency(dpAmount)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-gray-400">
-                        <span>• Sisa (80%)</span>
-                        <span>
-                          {formatCurrency(order.hargaDisepakati * 0.8)}
-                        </span>
-                      </div>
+                      {order.pembayaran.map((payment: any) => (
+                        <div
+                          key={payment.id}
+                          className="flex justify-between text-gray-400"
+                        >
+                          <span>• {payment.tipePembayaran}</span>
+                          <span
+                            className={
+                              payment.statusPembayaran === "DIVERIFIKASI"
+                                ? "text-green-400 font-medium"
+                                : ""
+                            }
+                          >
+                            {formatCurrency(Number(payment.jumlah))}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>

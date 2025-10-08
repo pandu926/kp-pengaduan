@@ -204,7 +204,6 @@ export async function POST(request: NextRequest) {
         penggunaId: penggunaId ? parseInt(penggunaId) : null,
         layananId: parseInt(layananId),
         hargaDisepakati: finalHarga,
-        tanggalPesan: new Date(),
         lokasi: lokasi.trim(),
         catatan: catatan ? catatan.trim() : null,
         nomorHp: phoneValidation.formatted!,

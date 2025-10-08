@@ -16,7 +16,7 @@ export async function GET(
         pesanan: {
           include: {
             layanan: true,
-            progres: true,
+            pembayaran: true,
           },
         },
       },

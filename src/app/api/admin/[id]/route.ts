@@ -18,7 +18,6 @@ export async function GET(
         id: true,
         nama: true,
         email: true,
-        dibuatPada: true,
       },
     });
 
@@ -65,7 +64,6 @@ export async function PUT(
         id: true,
         nama: true,
         email: true,
-        dibuatPada: true,
       },
     });
 

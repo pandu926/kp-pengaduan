@@ -10,9 +10,6 @@ export async function GET() {
       include: {
         pesanan: true,
       },
-      orderBy: {
-        dibuatPada: "desc",
-      },
     });
 
     return NextResponse.json({

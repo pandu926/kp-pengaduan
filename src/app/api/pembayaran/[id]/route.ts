@@ -6,13 +6,13 @@ const prisma = new PrismaClient();
 // GET - Detail pembayaran by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt(params.id);
+    const { id } = await params;
 
     const pembayaran = await prisma.pembayaran.findUnique({
-      where: { id },
+      where: { id: parseInt(id) },
       include: {
         pesanan: {
           include: {
@@ -65,16 +65,22 @@ export async function GET(
 // PATCH - Update pembayaran (upload bukti atau verifikasi)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt(params.id);
+    const { id } = await params;
     const body = await request.json();
 
-    // Cek pembayaran exists
+    // Cek pembayaran exists dengan include pembayaran lainnya
     const pembayaran = await prisma.pembayaran.findUnique({
-      where: { id },
-      include: { pesanan: true },
+      where: { id: parseInt(id) },
+      include: {
+        pesanan: {
+          include: {
+            pembayaran: true, // Include semua pembayaran untuk cek DP
+          },
+        },
+      },
     });
 
     if (!pembayaran) {
@@ -136,13 +142,68 @@ export async function PATCH(
         alasanPenolakan: body.disetujui ? null : body.alasanPenolakan,
       };
 
-      // Update status pesanan jika diverifikasi
+      // Update status pesanan dan buat pelunasan jika DP diverifikasi
       if (body.disetujui) {
-        await prisma.pesanan.update({
-          where: { id: pembayaran.pesananId },
-          data: { status: "SELESAI" },
-        });
-        message = "Pembayaran berhasil diverifikasi, pesanan selesai";
+        // ✅ Cek apakah ini pembayaran DP
+        if (pembayaran.tipePembayaran === "DP") {
+          const hargaKesepakatan = pembayaran.pesanan.hargaDisepakati;
+
+          if (!hargaKesepakatan) {
+            return NextResponse.json(
+              {
+                success: false,
+                error: "Harga kesepakatan belum ditentukan",
+              },
+              { status: 400 }
+            );
+          }
+
+          // Hitung sisa pelunasan
+          const jumlahDP = Number(pembayaran.jumlah);
+          const sisaPelunasan = Number(hargaKesepakatan) - jumlahDP;
+
+          // Cek apakah sudah ada pembayaran pelunasan
+          const sudahAdaPelunasan = pembayaran.pesanan.pembayaran.some(
+            (p) => p.tipePembayaran === "PELUNASAN"
+          );
+
+          if (!sudahAdaPelunasan && sisaPelunasan > 0) {
+            // Buat pembayaran pelunasan otomatis
+            await prisma.pembayaran.create({
+              data: {
+                pesananId: pembayaran.pesananId,
+                jumlah: sisaPelunasan,
+                tipePembayaran: "PELUNASAN",
+                statusPembayaran: "BELUM_BAYAR",
+              },
+            });
+
+            message = `Pembayaran DP berhasil diverifikasi. Pembayaran pelunasan sebesar Rp ${sisaPelunasan.toLocaleString(
+              "id-ID"
+            )} telah dibuat.`;
+          } else {
+            message = "Pembayaran DP berhasil diverifikasi";
+          }
+
+          // ✅ Update status pesanan ke PROSES_PEMBANGUNAN jika DP diverifikasi
+          await prisma.pesanan.update({
+            where: { id: pembayaran.pesananId },
+            data: { status: "PROSES_PEMBANGUNAN" },
+          });
+        }
+        // ✅ Jika pelunasan diverifikasi, update status pesanan ke SELESAI
+        else if (pembayaran.tipePembayaran === "PELUNASAN") {
+          await prisma.pesanan.update({
+            where: { id: pembayaran.pesananId },
+            data: { status: "SELESAI" },
+          });
+          message =
+            "Pembayaran pelunasan berhasil diverifikasi, pesanan selesai";
+        }
+        // Untuk tipe lainnya (jika ada)
+        else {
+          message = "Pembayaran berhasil diverifikasi";
+        }
       } else {
         message = "Pembayaran ditolak";
       }
@@ -155,13 +216,14 @@ export async function PATCH(
 
     // Update pembayaran
     const updatedPembayaran = await prisma.pembayaran.update({
-      where: { id },
+      where: { id: parseInt(id) },
       data: updateData,
       include: {
         pesanan: {
           include: {
             pengguna: true,
             layanan: true,
+            pembayaran: true, // Include semua pembayaran
           },
         },
         diverifikasiOleh: {
@@ -191,13 +253,13 @@ export async function PATCH(
 // DELETE - Hapus pembayaran
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt(params.id);
+    const { id } = await params;
 
     const pembayaran = await prisma.pembayaran.findUnique({
-      where: { id },
+      where: { id: parseInt(id) },
     });
 
     if (!pembayaran) {
@@ -218,7 +280,7 @@ export async function DELETE(
     }
 
     await prisma.pembayaran.delete({
-      where: { id },
+      where: { id: parseInt(id) },
     });
 
     return NextResponse.json({

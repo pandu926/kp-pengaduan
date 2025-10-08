@@ -31,10 +31,6 @@ export async function GET(request: NextRequest) {
     // Query pesanan dalam rentang tanggal
     const pesanan = await prisma.pesanan.findMany({
       where: {
-        tanggalPesan: {
-          gte: startDate,
-          lte: endDate,
-        },
         // Filter hanya pesanan selesai untuk laporan
         status: "SELESAI",
       },
@@ -52,10 +48,6 @@ export async function GET(request: NextRequest) {
             nama: true,
           },
         },
-        progres: true,
-      },
-      orderBy: {
-        tanggalPesan: "asc",
       },
     });
 

@@ -11,10 +11,6 @@ export async function GET() {
         id: true,
         nama: true,
         email: true,
-        dibuatPada: true,
-      },
-      orderBy: {
-        dibuatPada: "desc",
       },
     });
 
@@ -56,7 +52,6 @@ export async function POST(request: NextRequest) {
         id: true,
         nama: true,
         email: true,
-        dibuatPada: true,
       },
     });
 

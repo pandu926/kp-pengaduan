@@ -14,9 +14,6 @@ export async function GET() {
           },
         },
       },
-      orderBy: {
-        dibuatPada: "desc",
-      },
     });
 
     return NextResponse.json({

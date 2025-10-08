@@ -17,6 +17,7 @@ interface PaymentModalProps {
   infoRekening: InfoRekening | null;
   onUploadBukti: (imageUrl: string) => Promise<void>;
   uploadLoading: boolean;
+  typePembayaran: "DP" | "PELUNASAN";
 }
 
 const PaymentModal: React.FC<PaymentModalProps> = ({
@@ -29,6 +30,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   infoRekening,
   onUploadBukti,
   uploadLoading,
+  typePembayaran,
 }) => {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -180,7 +182,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           {/* Payment Amount */}
           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6">
             <div className="text-center">
-              <p className="text-sm text-gray-600 mb-1">Total Pembayaran DP</p>
+              <p className="text-sm text-gray-600 mb-1">
+                Total Pembayaran {typePembayaran}
+              </p>
               <div className="text-4xl font-bold text-blue-600 mb-2">
                 {formatCurrency(totalPembayaran)}
               </div>

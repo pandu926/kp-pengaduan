@@ -29,11 +29,23 @@ export async function GET(
             id: true,
             nama: true,
             email: true,
-            // Don't include sensitive data
           },
         },
         layanan: true,
-        pembayaran: true,
+        pembayaran: {
+          orderBy: {
+            dibuatPada: "asc",
+          },
+          include: {
+            diverifikasiOleh: {
+              select: {
+                id: true,
+                nama: true,
+                email: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -170,18 +182,17 @@ export async function PUT(
 }
 
 // PATCH - Update status pesanan (partial update for status only)
-
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt(params.id);
+    const { id } = await params;
     const body = await request.json();
 
     // Cek pesanan exists
     const pesanan = await prisma.pesanan.findUnique({
-      where: { id },
+      where: { id: parseInt(id) },
       include: { pembayaran: true },
     });
 
@@ -203,12 +214,39 @@ export async function PATCH(
     if (body.hargaDisepakati !== undefined) {
       updateData.hargaDisepakati = body.hargaDisepakati;
 
-      // Auto-create pembayaran jika status DITERIMA dan belum ada pembayaran
-      if (body.status === "DITERIMA" && !pesanan.pembayaran) {
+      // Auto-create pembayaran DP dan PELUNASAN jika status DITERIMA dan belum ada pembayaran
+      if (body.status === "DITERIMA" && pesanan.pembayaran.length === 0) {
+        // Validasi harga harus ada
+        if (!body.hargaDisepakati || body.hargaDisepakati <= 0) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "Harga disepakati harus diisi dan lebih dari 0",
+            },
+            { status: 400 }
+          );
+        }
+
+        const hargaTotal = body.hargaDisepakati;
+        const jumlahDP = hargaTotal * 0.2; //
+        const jumlahPelunasan = hargaTotal - jumlahDP;
+
+        // Buat pembayaran DP
         await prisma.pembayaran.create({
           data: {
-            pesananId: id,
-            jumlah: body.hargaDisepakati,
+            pesananId: parseInt(id),
+            jumlah: jumlahDP,
+            tipePembayaran: "DP",
+            statusPembayaran: "BELUM_BAYAR",
+          },
+        });
+
+        // Buat pembayaran PELUNASAN
+        await prisma.pembayaran.create({
+          data: {
+            pesananId: parseInt(id),
+            jumlah: jumlahPelunasan,
+            tipePembayaran: "PELUNASAN",
             statusPembayaran: "BELUM_BAYAR",
           },
         });
@@ -222,7 +260,7 @@ export async function PATCH(
 
     // Update pesanan
     const updatedPesanan = await prisma.pesanan.update({
-      where: { id },
+      where: { id: parseInt(id) },
       data: updateData,
       include: {
         pengguna: {
@@ -234,6 +272,9 @@ export async function PATCH(
         },
         layanan: true,
         pembayaran: {
+          orderBy: {
+            dibuatPada: "asc",
+          },
           include: {
             diverifikasiOleh: {
               select: {
@@ -250,7 +291,8 @@ export async function PATCH(
     return NextResponse.json({
       success: true,
       data: updatedPesanan,
-      message: "Pesanan berhasil diupdate",
+      message:
+        "Pesanan berhasil diupdate. Pembayaran DP dan Pelunasan telah dibuat.",
     });
   } catch (error) {
     console.error("Error updating pesanan:", error);

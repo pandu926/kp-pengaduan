@@ -57,16 +57,17 @@ model Pesanan {
   dibuatPada       DateTime      @default(now())
   diperbaruiPada   DateTime      @updatedAt
   
-  // Relasi
-  pembayaran       Pembayaran?
+  // Relasi - DIUBAH: sekarang one-to-many
+  pembayaran       Pembayaran[]
 }
 
 // Model Pembayaran
 model Pembayaran {
   id                  Int              @id @default(autoincrement())
   pesanan             Pesanan          @relation(fields: [pesananId], references: [id], onDelete: Cascade)
-  pesananId           Int              @unique
+  pesananId           Int
   jumlah              Decimal          @db.Decimal(12, 2)
+  tipePembayaran      TipePembayaran   @default(DP)  // Field baru
   metodePembayaran    String?
   buktiPembayaran     String?
   statusPembayaran    StatusBayar      @default(BELUM_BAYAR)
@@ -85,6 +86,7 @@ enum StatusPesanan {
   DITERIMA
   DITOLAK
   PROSES_PEMBANGUNAN
+  PELUNASAN
   SELESAI
 }
 
@@ -94,4 +96,10 @@ enum StatusBayar {
   MENUNGGU_VERIFIKASI
   DIVERIFIKASI
   DITOLAK
+}
+
+enum TipePembayaran {
+  DP
+  PELUNASAN
+  CICILAN
 }
