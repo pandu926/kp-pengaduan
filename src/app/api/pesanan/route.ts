@@ -1,6 +1,7 @@
 // app/api/pesanan/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient, StatusPesanan } from "@prisma/client";
+import { notifyPesananBaru } from "@/lib/notification"; // sesuaikan path
 
 const prisma = new PrismaClient();
 
@@ -226,6 +227,16 @@ export async function POST(request: NextRequest) {
           },
         },
       },
+    });
+    notifyPesananBaru({
+      orderId: pesanan.id,
+      namaPelanggan: pesanan.namaPelanggan,
+      layanan: pesanan.layanan?.nama || "Layanan tidak tersedia",
+      lokasi: pesanan.lokasi || "",
+      nomorHp: pesanan.nomorHp,
+      catatan: pesanan.catatan || undefined,
+    }).catch((err) => {
+      console.error("Gagal mengirim email notifikasi pesanan baru:", err);
     });
 
     return NextResponse.json(

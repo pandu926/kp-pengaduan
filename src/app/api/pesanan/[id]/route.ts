@@ -1,7 +1,15 @@
 // app/api/pesanan/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient, StatusPesanan } from "@prisma/client";
-
+import {
+  notifyPesananBaru,
+  notifyPesananDiterima,
+  notifyPesananDitolak,
+  notifyBuktiPembayaran,
+  notifyPembayaranDiverifikasi,
+  notifyPembayaranDitolak,
+  notifyPesananSelesai,
+} from "@/lib/notification";
 const prisma = new PrismaClient();
 
 // GET - Ambil pesanan berdasarkan ID
@@ -287,6 +295,45 @@ export async function PATCH(
         },
       },
     });
+    try {
+      const userEmail = updatedPesanan.pengguna?.email || "-";
+      const layananNama =
+        updatedPesanan.layanan?.nama || "Layanan tidak tersedia";
+
+      if (body.status === "DITERIMA") {
+        // Email ke pelanggan
+        await notifyPesananDiterima(
+          {
+            orderId: updatedPesanan.id,
+            namaPelanggan: updatedPesanan.namaPelanggan,
+            layanan: layananNama,
+            hargaDisepakati: updatedPesanan.hargaDisepakati!,
+          },
+          userEmail
+        );
+      } else if (body.status === "DITOLAK") {
+        await notifyPesananDitolak(
+          {
+            orderId: updatedPesanan.id,
+            namaPelanggan: updatedPesanan.namaPelanggan,
+            layanan: layananNama,
+            alasanPenolakan: body.alasanPenolakan || "Tidak ada keterangan",
+          },
+          userEmail
+        );
+      } else if (body.status === "SELESAI") {
+        await notifyPesananSelesai(
+          {
+            orderId: updatedPesanan.id,
+            namaPelanggan: updatedPesanan.namaPelanggan,
+            layanan: layananNama,
+          },
+          userEmail
+        );
+      }
+    } catch (err) {
+      console.error("Gagal mengirim email notifikasi:", err);
+    }
 
     return NextResponse.json({
       success: true,

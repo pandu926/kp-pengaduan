@@ -22,7 +22,7 @@ interface EmailOptions {
 export async function sendEmail({ to, subject, html }: EmailOptions) {
   try {
     const info = await transporter.sendMail({
-      from: `"CV Arfila Jasa Putra" <${process.env.EMAIL_USER}>`,
+      from: `"CV Arfila Jaya Putra" <${process.env.EMAIL_USER}>`,
       to,
       subject,
       html,
