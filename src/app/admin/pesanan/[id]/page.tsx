@@ -16,6 +16,14 @@ import {
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import axios from "axios";
+import {
+  showSuccessAlert,
+  showErrorAlert,
+  showConfirmAlert,
+  showLoadingAlert,
+  closeLoadingAlert,
+  MESSAGES,
+} from "@/lib/notification.utils";
 import Swal from "sweetalert2";
 
 // Types
@@ -112,6 +120,7 @@ const OrderDetailPage: React.FC = () => {
       } catch (err) {
         setError("Gagal memuat data pesanan");
         console.error("Error fetching order:", err);
+        showErrorAlert(MESSAGES.LOAD_ERROR, "Gagal Memuat Data");
       } finally {
         setLoading(false);
       }
@@ -128,11 +137,7 @@ const OrderDetailPage: React.FC = () => {
 
     // Validasi
     if (!formData.status) {
-      Swal.fire({
-        icon: "error",
-        title: "Validasi Gagal",
-        text: "Status harus dipilih",
-      });
+      showErrorAlert("Status pesanan harus dipilih", "Validasi Gagal");
       return;
     }
 
@@ -140,24 +145,18 @@ const OrderDetailPage: React.FC = () => {
       formData.status === StatusPesanan.DITERIMA &&
       !formData.hargaDisepakati
     ) {
-      Swal.fire({
-        icon: "error",
-        title: "Validasi Gagal",
-        text: "Harga harus diisi jika status DITERIMA",
-      });
+      showErrorAlert("Harga harus diisi jika status DITERIMA", "Validasi Gagal");
       return;
     }
 
     if (formData.status === StatusPesanan.DITOLAK && !formData.catatanAdmin) {
-      Swal.fire({
-        icon: "error",
-        title: "Validasi Gagal",
-        text: "Alasan penolakan harus diisi",
-      });
+      showErrorAlert("Alasan penolakan harus diisi jika status DITOLAK", "Validasi Gagal");
       return;
     }
 
     try {
+      showLoadingAlert("Memperbarui data pesanan...");
+
       const updateData: any = {
         status: formData.status,
         catatanAdmin: formData.catatanAdmin || null,
@@ -172,23 +171,16 @@ const OrderDetailPage: React.FC = () => {
 
       const res = await axios.patch(`/api/pesanan/${orderId}`, updateData);
 
+      closeLoadingAlert();
       setOrder(res.data.data);
       setShowUpdateForm(false);
 
-      Swal.fire({
-        icon: "success",
-        title: "Berhasil",
-        text: "Pesanan berhasil diupdate",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-    } catch (error) {
+      showSuccessAlert("Pesanan berhasil diperbarui!", "Data Tersimpan");
+    } catch (error: any) {
+      closeLoadingAlert();
       console.error("Gagal update pesanan:", error);
-      Swal.fire({
-        icon: "error",
-        title: "Gagal",
-        text: "Gagal mengupdate pesanan",
-      });
+      const errorMessage = error.response?.data?.error || MESSAGES.UPDATE_ERROR;
+      showErrorAlert(errorMessage, "Gagal Memperbarui");
     }
   };
 
@@ -199,35 +191,38 @@ const OrderDetailPage: React.FC = () => {
       setOrder(res.data.data);
     } catch (err) {
       console.error("Error refreshing order:", err);
+      showErrorAlert("Gagal memperbarui data. Silakan refresh halaman.", "Gagal Memuat");
     }
   };
 
   // Verifikasi pembayaran - FIXED with paymentId parameter
   const handleVerifyPayment = async (paymentId: number, approved: boolean) => {
     const result = await Swal.fire({
-      title: approved ? "Approve Pembayaran?" : "Reject Pembayaran?",
+      title: approved ? "Setujui Pembayaran?" : "Tolak Pembayaran?",
       text: approved
-        ? "Pembayaran akan diverifikasi"
+        ? "Pembayaran akan diverifikasi dan disetujui"
         : "Pembayaran akan ditolak",
-      icon: "warning",
+      icon: "question",
       showCancelButton: true,
       confirmButtonColor: approved ? "#10b981" : "#ef4444",
       cancelButtonColor: "#6b7280",
-      confirmButtonText: approved ? "Ya, Approve" : "Ya, Reject",
+      confirmButtonText: approved ? "Ya, Setujui" : "Ya, Tolak",
       cancelButtonText: "Batal",
       ...(approved
         ? {}
         : {
             input: "textarea",
-            inputPlaceholder: "Alasan penolakan...",
+            inputPlaceholder: "Alasan penolakan pembayaran...",
             inputValidator: (value) => {
-              if (!value) return "Alasan harus diisi!";
+              if (!value) return "Alasan penolakan harus diisi!";
             },
           }),
     });
 
     if (result.isConfirmed) {
       try {
+        showLoadingAlert("Memproses verifikasi pembayaran...");
+
         await axios.patch(`/api/pembayaran/${paymentId}`, {
           action: "verifikasi",
           adminId: 1, // TODO: Get from session
@@ -236,23 +231,19 @@ const OrderDetailPage: React.FC = () => {
         });
 
         await refreshOrderData();
+        closeLoadingAlert();
 
-        Swal.fire({
-          icon: "success",
-          title: "Berhasil",
-          text: approved
-            ? "Pembayaran berhasil diverifikasi"
-            : "Pembayaran ditolak",
-          timer: 2000,
-          showConfirmButton: false,
-        });
-      } catch (error) {
+        showSuccessAlert(
+          approved
+            ? "Pembayaran berhasil diverifikasi dan disetujui!"
+            : "Pembayaran berhasil ditolak.",
+          approved ? "Pembayaran Disetujui" : "Pembayaran Ditolak"
+        );
+      } catch (error: any) {
+        closeLoadingAlert();
         console.error("Gagal verifikasi:", error);
-        Swal.fire({
-          icon: "error",
-          title: "Gagal",
-          text: "Gagal memproses verifikasi pembayaran",
-        });
+        const errorMessage = error.response?.data?.error || "Gagal memproses verifikasi pembayaran. Silakan coba lagi.";
+        showErrorAlert(errorMessage, "Gagal Verifikasi");
       }
     }
   };

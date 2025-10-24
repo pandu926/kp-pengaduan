@@ -1,4 +1,11 @@
 import React, { useState } from "react";
+import {
+  showSuccessAlert,
+  showErrorAlert,
+  showLoadingAlert,
+  closeLoadingAlert,
+  showInfoAlert,
+} from "@/lib/notification.utils";
 
 interface InfoRekening {
   bank: string;
@@ -55,6 +62,10 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       setTimeout(() => setCopiedField(null), 2000);
     } catch (err) {
       console.error("Failed to copy:", err);
+      showErrorAlert(
+        "Gagal menyalin teks. Silakan salin secara manual.",
+        "Gagal Menyalin"
+      );
     }
   };
 
@@ -64,12 +75,18 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
     const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
     if (!allowedTypes.includes(file.type)) {
-      alert("Format file tidak valid. Gunakan JPG, PNG");
+      showErrorAlert(
+        "Format file tidak valid. Mohon gunakan format JPG atau PNG.",
+        "Format File Salah"
+      );
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      alert("Ukuran file maksimal 5MB");
+      showErrorAlert(
+        "Ukuran file terlalu besar. Maksimal ukuran file adalah 5MB.",
+        "File Terlalu Besar"
+      );
       return;
     }
 
@@ -93,22 +110,31 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     });
 
     if (!response.ok) {
-      throw new Error("Gagal mengupload gambar");
+      throw new Error("Gagal mengupload gambar ke server. Periksa koneksi internet Anda.");
     }
 
     const result = await response.json();
+
+    if (!result.fileName) {
+      throw new Error("Response upload gambar tidak valid.");
+    }
+
     console.log(result);
     return `https://apigambar.denkhultech.com/uploads/${result.fileName}`;
   };
 
   const handleUpload = async () => {
     if (!selectedFile) {
-      alert("Silakan pilih file terlebih dahulu");
+      showErrorAlert(
+        "Silakan pilih file bukti pembayaran terlebih dahulu.",
+        "File Belum Dipilih"
+      );
       return;
     }
 
     try {
       setUploading(true);
+      showLoadingAlert("Mengupload bukti pembayaran...");
 
       // Upload image to API first
       const imageUrl = await uploadImageToAPI(selectedFile);
@@ -116,12 +142,21 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       // Then save the URL to database via parent handler
       await onUploadBukti(imageUrl);
 
+      closeLoadingAlert();
+
       // Clear state
       setSelectedFile(null);
       setPreviewUrl(null);
-    } catch (err) {
+
+      await showSuccessAlert(
+        "Bukti pembayaran berhasil diupload! Tim kami akan segera memverifikasi pembayaran Anda.",
+        "Upload Berhasil!"
+      );
+    } catch (err: any) {
+      closeLoadingAlert();
       console.error("Upload failed:", err);
-      alert("Gagal mengupload bukti pembayaran. Silakan coba lagi.");
+      const errorMessage = err.message || "Gagal mengupload bukti pembayaran. Silakan coba lagi.";
+      showErrorAlert(errorMessage, "Gagal Upload");
     } finally {
       setUploading(false);
     }

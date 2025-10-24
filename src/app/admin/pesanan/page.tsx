@@ -12,6 +12,15 @@ import { Pesanan, TableColumn, StatusPesanan } from "@/lib/types";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import {
+  showSuccessAlert,
+  showErrorAlert,
+  showDeleteConfirm,
+  showLoadingAlert,
+  closeLoadingAlert,
+  handleApiError,
+  MESSAGES,
+} from "@/lib/notification.utils";
 
 export default function PesananPage() {
   const [pesananList, setPesananList] = useState<Pesanan[]>([]);
@@ -27,10 +36,14 @@ export default function PesananPage() {
   const fetchPesanan = async () => {
     try {
       const res = await fetch("/api/pesanan");
+      if (!res.ok) {
+        throw new Error("Gagal mengambil data pesanan");
+      }
       const data = await res.json();
       setPesananList(data.data);
     } catch (err) {
       console.error("Gagal fetch data pesanan", err);
+      showErrorAlert(MESSAGES.LOAD_ERROR, "Gagal Memuat Data");
     }
   };
 
@@ -113,19 +126,41 @@ export default function PesananPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Yakin ingin menghapus pesanan ini?")) return;
+    const pesanan = pesananList.find((p) => p.id === id);
+    const result = await showDeleteConfirm(
+      pesanan?.namaPelanggan ? `pesanan atas nama ${pesanan.namaPelanggan}` : "pesanan ini"
+    );
+
+    if (!result.isConfirmed) return;
+
     try {
-      await fetch(`/api/pesanan/${id}`, {
+      showLoadingAlert("Menghapus data pesanan...");
+      const res = await fetch(`/api/pesanan/${id}`, {
         method: "DELETE",
       });
+
+      closeLoadingAlert();
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Gagal menghapus pesanan");
+      }
+
       await fetchPesanan();
-    } catch (err) {
+      showSuccessAlert(MESSAGES.DELETE_SUCCESS, "Pesanan Dihapus");
+    } catch (err: any) {
+      closeLoadingAlert();
       console.error("Gagal menghapus pesanan", err);
+      showErrorAlert(err.message || MESSAGES.DELETE_ERROR, "Gagal Menghapus");
     }
   };
 
   const handleSubmit = async (formData: Partial<Pesanan>) => {
     try {
+      showLoadingAlert(
+        editingPesanan ? "Memperbarui data pesanan..." : "Menambahkan pesanan baru..."
+      );
+
       if (editingPesanan) {
         await axios.put(`/api/pesanan/${editingPesanan.id}`, formData, {
           headers: { "Content-Type": "application/json" },
@@ -136,13 +171,21 @@ export default function PesananPage() {
         });
       }
 
+      closeLoadingAlert();
       await fetchPesanan();
       setIsModalOpen(false);
+
+      showSuccessAlert(
+        editingPesanan ? MESSAGES.UPDATE_SUCCESS : MESSAGES.CREATE_SUCCESS,
+        editingPesanan ? "Pesanan Diperbarui" : "Pesanan Ditambahkan"
+      );
     } catch (err) {
+      closeLoadingAlert();
       console.error("❌ Gagal menyimpan pesanan:", err);
       if (axios.isAxiosError(err)) {
         console.error("Detail error:", err.response?.data || err.message);
       }
+      handleApiError(err);
     }
   };
 

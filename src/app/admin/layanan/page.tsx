@@ -10,6 +10,14 @@ import Card from "@/components/admin/Common/Card";
 import LayananForm from "@/components/admin/Forms/LayananForm";
 import { Layanan, TableColumn } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
+import {
+  showSuccessAlert,
+  showErrorAlert,
+  showDeleteConfirm,
+  showLoadingAlert,
+  closeLoadingAlert,
+  MESSAGES,
+} from "@/lib/notification.utils";
 
 export default function LayananPage() {
   const [layananList, setLayananList] = useState<Layanan[]>([]);
@@ -20,10 +28,14 @@ export default function LayananPage() {
   const fetchLayanan = async () => {
     try {
       const res = await fetch("/api/layanan");
+      if (!res.ok) {
+        throw new Error("Gagal mengambil data layanan");
+      }
       const data = await res.json();
       setLayananList(data.data);
     } catch (err) {
       console.error("Gagal mengambil data layanan", err);
+      showErrorAlert(MESSAGES.LOAD_ERROR, "Gagal Memuat Data");
     }
   };
 
@@ -58,38 +70,82 @@ export default function LayananPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Yakin ingin menghapus layanan ini?")) return;
+    const layanan = layananList.find((l) => l.id === id);
+    const result = await showDeleteConfirm(
+      layanan?.nama || "layanan ini"
+    );
+
+    if (!result.isConfirmed) return;
+
     try {
-      await fetch(`/api/layanan/${id}`, {
+      showLoadingAlert("Menghapus data layanan...");
+      const res = await fetch(`/api/layanan/${id}`, {
         method: "DELETE",
       });
+
+      closeLoadingAlert();
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Gagal menghapus layanan");
+      }
+
       await fetchLayanan();
-    } catch (err) {
+      showSuccessAlert(MESSAGES.DELETE_SUCCESS, "Layanan Dihapus");
+    } catch (err: any) {
+      closeLoadingAlert();
       console.error("Gagal menghapus layanan", err);
+      showErrorAlert(err.message || MESSAGES.DELETE_ERROR, "Gagal Menghapus");
     }
   };
 
   const handleSubmit = async (formData: Partial<Layanan>) => {
     try {
+      setLoading(true);
+      showLoadingAlert(
+        editingLayanan ? "Memperbarui data layanan..." : "Menambahkan layanan baru..."
+      );
+
+      let res;
       if (editingLayanan) {
         // Update
-        await fetch(`/api/layanan/${editingLayanan.id}`, {
+        res = await fetch(`/api/layanan/${editingLayanan.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(formData),
         });
       } else {
         // Tambah
-        await fetch(`/api/layanan`, {
+        res = await fetch(`/api/layanan`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(formData),
         });
       }
+
+      closeLoadingAlert();
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Gagal menyimpan layanan");
+      }
+
       await fetchLayanan();
       setIsModalOpen(false);
-    } catch (err) {
+
+      showSuccessAlert(
+        editingLayanan ? MESSAGES.UPDATE_SUCCESS : MESSAGES.CREATE_SUCCESS,
+        editingLayanan ? "Layanan Diperbarui" : "Layanan Ditambahkan"
+      );
+    } catch (err: any) {
+      closeLoadingAlert();
       console.error("Gagal menyimpan layanan", err);
+      showErrorAlert(
+        err.message || (editingLayanan ? MESSAGES.UPDATE_ERROR : MESSAGES.CREATE_ERROR),
+        "Gagal Menyimpan"
+      );
+    } finally {
+      setLoading(false);
     }
   };
 

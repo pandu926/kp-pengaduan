@@ -65,6 +65,7 @@ const LayananForm = ({ layanan, onSubmit, onCancel }: LayananFormProps) => {
           }
           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           rows={3}
+          required
         />
       </div>
 

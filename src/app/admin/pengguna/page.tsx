@@ -12,6 +12,15 @@ import PenggunaForm from "@/components/admin/Forms/PenggunaForm";
 import { Pengguna, TableColumn } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import axios from "axios";
+import {
+  showSuccessAlert,
+  showErrorAlert,
+  showDeleteConfirm,
+  showLoadingAlert,
+  closeLoadingAlert,
+  handleApiError,
+  MESSAGES,
+} from "@/lib/notification.utils";
 
 export default function PenggunaPage() {
   const { data: session, status } = useSession();
@@ -33,7 +42,7 @@ export default function PenggunaPage() {
       const data = res.data.data;
       setPenggunaList(data);
     } catch (err) {
-      console.error("Gagal memuat data pengguna:", err);
+      handleApiError(err);
     } finally {
       setLoading(false);
     }
@@ -50,17 +59,28 @@ export default function PenggunaPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (confirm("Yakin ingin menghapus pengguna ini?")) {
+    const pengguna = penggunaList.find((p) => p.id === id);
+    const penggunaName = pengguna?.nama || "pengguna ini";
+
+    const result = await showDeleteConfirm(penggunaName);
+    if (result.isConfirmed) {
+      showLoadingAlert("Menghapus pengguna...");
       try {
         await fetch(`/api/pengguna/${id}`, { method: "DELETE" });
+        closeLoadingAlert();
         setPenggunaList((prev) => prev.filter((item) => item.id !== id));
+        showSuccessAlert(MESSAGES.DELETE_SUCCESS);
       } catch (err) {
-        console.error("Gagal menghapus pengguna:", err);
+        closeLoadingAlert();
+        handleApiError(err);
       }
     }
   };
 
   const handleSubmit = async (formData: Partial<Pengguna>) => {
+    showLoadingAlert(
+      editingPengguna ? "Memperbarui pengguna..." : "Menambahkan pengguna..."
+    );
     try {
       if (editingPengguna) {
         // Update
@@ -72,6 +92,8 @@ export default function PenggunaPage() {
 
         // Fetch ulang setelah update
         await fetchData();
+        closeLoadingAlert();
+        showSuccessAlert(MESSAGES.UPDATE_SUCCESS);
       } else {
         // Create
         await fetch("/api/pengguna", {
@@ -80,11 +102,14 @@ export default function PenggunaPage() {
           body: JSON.stringify(formData),
         });
         await fetchData();
+        closeLoadingAlert();
+        showSuccessAlert(MESSAGES.CREATE_SUCCESS);
       }
 
       setIsModalOpen(false);
     } catch (err) {
-      console.error("Gagal menyimpan pengguna:", err);
+      closeLoadingAlert();
+      handleApiError(err);
     }
   };
   const columns: TableColumn[] = [

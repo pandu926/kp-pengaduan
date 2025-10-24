@@ -10,6 +10,15 @@ import Card from "@/components/admin/Common/Card";
 import PortofolioForm from "@/components/admin/Forms/PortofolioForm";
 import { Portofolio, TableColumn } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
+import {
+  showSuccessAlert,
+  showErrorAlert,
+  showDeleteConfirm,
+  showLoadingAlert,
+  closeLoadingAlert,
+  handleApiError,
+  MESSAGES,
+} from "@/lib/notification.utils";
 
 export default function PortofolioPage() {
   const [portofolioList, setPortofolioList] = useState<Portofolio[]>([]);
@@ -24,7 +33,7 @@ export default function PortofolioPage() {
       const data = await res.json();
       setPortofolioList(data.data);
     } catch (err) {
-      console.error("Gagal memuat data portofolio", err);
+      handleApiError(err);
     }
   };
 
@@ -68,16 +77,28 @@ export default function PortofolioPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Yakin ingin menghapus portofolio ini?")) return;
-    try {
-      await fetch(`/api/portofolio/${id}`, { method: "DELETE" });
-      await fetchPortofolio();
-    } catch (err) {
-      console.error("Gagal menghapus portofolio", err);
+    const portofolio = portofolioList.find((p) => p.id === id);
+    const portofolioName = portofolio?.judul || "portofolio ini";
+
+    const result = await showDeleteConfirm(portofolioName);
+    if (result.isConfirmed) {
+      showLoadingAlert("Menghapus portofolio...");
+      try {
+        await fetch(`/api/portofolio/${id}`, { method: "DELETE" });
+        await fetchPortofolio();
+        closeLoadingAlert();
+        showSuccessAlert(MESSAGES.DELETE_SUCCESS);
+      } catch (err) {
+        closeLoadingAlert();
+        handleApiError(err);
+      }
     }
   };
 
   const handleSubmit = async (formData: Partial<Portofolio>) => {
+    showLoadingAlert(
+      editingPortofolio ? "Memperbarui portofolio..." : "Menambahkan portofolio..."
+    );
     try {
       if (editingPortofolio) {
         await fetch(`/api/portofolio/${editingPortofolio.id}`, {
@@ -85,17 +106,23 @@ export default function PortofolioPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(formData),
         });
+        await fetchPortofolio();
+        closeLoadingAlert();
+        showSuccessAlert(MESSAGES.UPDATE_SUCCESS);
       } else {
         await fetch("/api/portofolio", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(formData),
         });
+        await fetchPortofolio();
+        closeLoadingAlert();
+        showSuccessAlert(MESSAGES.CREATE_SUCCESS);
       }
-      await fetchPortofolio();
       setIsModalOpen(false);
     } catch (err) {
-      console.error("Gagal menyimpan portofolio", err);
+      closeLoadingAlert();
+      handleApiError(err);
     }
   };
 

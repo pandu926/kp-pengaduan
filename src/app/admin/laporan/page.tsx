@@ -10,6 +10,15 @@ import Card from "@/components/admin/Common/Card";
 import axios from "axios";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { TableColumn } from "@/lib/types";
+import {
+  showSuccessAlert,
+  showErrorAlert,
+  showDeleteConfirm,
+  showLoadingAlert,
+  closeLoadingAlert,
+  handleApiError,
+  MESSAGES,
+} from "@/lib/notification.utils";
 
 interface PesananLaporan {
   id: number;
@@ -51,7 +60,7 @@ export default function LaporanPage() {
         data.reduce((sum, p) => sum + (p.hargaDisepakati || 0), 0)
       );
     } catch (err) {
-      console.error("Gagal mengambil data laporan:", err);
+      handleApiError(err);
     } finally {
       setLoading(false);
     }

@@ -3,6 +3,13 @@ import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import {
+  showSuccessAlert,
+  showErrorAlert,
+  showLoadingAlert,
+  closeLoadingAlert,
+  handleApiError,
+} from "@/lib/notification.utils";
 
 interface Layanan {
   id: number;
@@ -83,7 +90,9 @@ export default function CreateOrderPage() {
         setLayananList(data);
       } catch (error) {
         console.error("Error fetching layanan:", error);
-        setError("Gagal memuat daftar layanan");
+        const errorMsg = "Gagal memuat daftar layanan. Silakan refresh halaman.";
+        setError(errorMsg);
+        showErrorAlert(errorMsg, "Gagal Memuat Data");
       } finally {
         setLoadingLayanan(false);
       }
@@ -183,7 +192,10 @@ export default function CreateOrderPage() {
     e.preventDefault();
 
     if (!session?.user?.id) {
-      setError("Anda harus login terlebih dahulu");
+      showErrorAlert(
+        "Anda harus login terlebih dahulu untuk membuat pesanan",
+        "Login Diperlukan"
+      );
       return;
     }
 
@@ -194,6 +206,8 @@ export default function CreateOrderPage() {
     setSuccess(null);
 
     try {
+      showLoadingAlert("Mengirim pesanan Anda...");
+
       const formattedPhone = formatPhoneNumber(formData.nomorHp);
 
       const orderData = {
@@ -209,11 +223,9 @@ export default function CreateOrderPage() {
 
       const response = await axios.post("/api/pesanan", orderData);
 
-      if (response.data.success) {
-        setSuccess(
-          "Pesanan berhasil diajukan! Anda akan segera dihubungi untuk konfirmasi."
-        );
+      closeLoadingAlert();
 
+      if (response.data.success) {
         setFormData({
           layananId: null,
           namaPelanggan: "",
@@ -223,16 +235,20 @@ export default function CreateOrderPage() {
           catatan: "",
         });
 
-        setTimeout(() => {
-          router.push("/user/dashboard");
-        }, 2000);
+        await showSuccessAlert(
+          "Pesanan Anda berhasil diajukan! Tim kami akan segera menghubungi Anda via WhatsApp untuk konfirmasi dan survei lokasi.",
+          "Pesanan Berhasil Dikirim!"
+        );
+
+        router.push("/user/dashboard");
       } else {
         throw new Error(response.data.error || "Gagal membuat pesanan");
       }
     } catch (error: any) {
+      closeLoadingAlert();
       console.error("Error creating order:", error);
 
-      let errorMessage = "Gagal membuat pesanan";
+      let errorMessage = "Gagal membuat pesanan. Silakan coba lagi.";
 
       if (error.response?.data?.error) {
         errorMessage = error.response.data.error;
@@ -240,20 +256,22 @@ export default function CreateOrderPage() {
         errorMessage = error.message;
       }
 
+      // Translate error messages to Indonesian
       if (errorMessage.includes("Format nomor HP tidak valid")) {
         errorMessage =
           "Format nomor HP tidak valid. Gunakan format: 08xxxxxxxxx atau +628xxxxxxxxx";
       } else if (
         errorMessage.includes("Nama pelanggan dan nomor HP wajib diisi")
       ) {
-        errorMessage = "Nama pelanggan dan nomor HP harus diisi";
+        errorMessage = "Nama pelanggan dan nomor HP harus diisi dengan lengkap";
       } else if (errorMessage.includes("Layanan tidak ditemukan")) {
-        errorMessage = "Layanan yang dipilih tidak tersedia";
+        errorMessage = "Layanan yang dipilih tidak tersedia. Silakan pilih layanan lain.";
       } else if (errorMessage.includes("Pengguna tidak ditemukan")) {
-        errorMessage = "Sesi login tidak valid. Silakan login ulang";
+        errorMessage = "Sesi login tidak valid. Silakan login ulang.";
       }
 
       setError(errorMessage);
+      showErrorAlert(errorMessage, "Gagal Mengirim Pesanan");
     } finally {
       setLoading(false);
     }

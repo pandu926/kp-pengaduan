@@ -3,6 +3,11 @@
 import { useState, useEffect, useRef } from "react";
 import Button from "../Common/Button";
 import { Upload, X } from "lucide-react";
+import {
+  showErrorAlert,
+  showLoadingAlert,
+  closeLoadingAlert,
+} from "@/lib/notification.utils";
 
 interface ProgresFormProps {
   orderId: number;
@@ -48,14 +53,18 @@ const ProgresForm = ({
 
     // Validasi tipe file
     if (!file.type.startsWith("image/")) {
-      setError("File harus berupa gambar (JPG, PNG, GIF, dll)");
+      const errorMsg = "File harus berupa gambar (JPG, PNG, GIF, dll)";
+      setError(errorMsg);
+      showErrorAlert(errorMsg, "Format File Salah");
       return;
     }
 
     // Validasi ukuran file (max 5MB)
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
-      setError("Ukuran file maksimal 5MB");
+      const errorMsg = "Ukuran file maksimal 5MB";
+      setError(errorMsg);
+      showErrorAlert(errorMsg, "File Terlalu Besar");
       return;
     }
 
@@ -89,10 +98,14 @@ const ProgresForm = ({
     });
 
     if (!response.ok) {
-      throw new Error("Gagal mengupload gambar");
+      throw new Error("Gagal mengupload gambar ke server. Periksa koneksi internet Anda.");
     }
 
     const result = await response.json();
+    if (!result.fileName) {
+      throw new Error("Response upload gambar tidak valid.");
+    }
+
     return `https://apigambar.denkhultech.com/uploads/${result.fileName}`;
   };
 
@@ -106,17 +119,24 @@ const ProgresForm = ({
 
     // Validasi
     if (!keterangan.trim()) {
-      setError("Keterangan tidak boleh kosong");
+      const errorMsg = "Keterangan tidak boleh kosong";
+      setError(errorMsg);
+      showErrorAlert(errorMsg, "Validasi Gagal");
       return;
     }
 
     if (persenProgres < 0 || persenProgres > 100) {
-      setError("Persentase progress harus antara 0-100");
+      const errorMsg = "Persentase progress harus antara 0-100";
+      setError(errorMsg);
+      showErrorAlert(errorMsg, "Validasi Gagal");
       return;
     }
 
     try {
       setIsSubmitting(true);
+      showLoadingAlert(
+        imageFile ? "Mengupload dokumentasi dan menyimpan progress..." : "Menyimpan progress..."
+      );
 
       let imageUrl = initialData?.urlDokumentasi || "";
 
@@ -137,8 +157,12 @@ const ProgresForm = ({
       formData.append("urlDokumentasi", imageUrl);
 
       await onSubmit(formData);
+      closeLoadingAlert();
     } catch (err: any) {
-      setError(err.message || "Gagal menyimpan progress");
+      closeLoadingAlert();
+      const errorMessage = err.message || "Gagal menyimpan progress. Silakan coba lagi.";
+      setError(errorMessage);
+      showErrorAlert(errorMessage, "Gagal Menyimpan");
       console.error(err);
     } finally {
       setIsSubmitting(false);
