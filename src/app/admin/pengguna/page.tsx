@@ -117,11 +117,6 @@ export default function PenggunaPage() {
     { key: "nama", label: "Nama" },
     { key: "email", label: "Email" },
     { key: "googleId", label: "Google ID" },
-    {
-      key: "dibuatPada",
-      label: "Dibuat",
-      render: (value) => formatDate(value),
-    },
   ];
 
   if (loading || status === "loading") {

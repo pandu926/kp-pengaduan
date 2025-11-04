@@ -109,7 +109,7 @@ export default function PesananPage() {
     },
     { key: "lokasi", label: "Lokasi" },
     {
-      key: "tanggalPesan",
+      key: "dibuatPada",
       label: "Tanggal Pesan",
       render: (value) => formatDate(value),
     },
@@ -128,7 +128,9 @@ export default function PesananPage() {
   const handleDelete = async (id: number) => {
     const pesanan = pesananList.find((p) => p.id === id);
     const result = await showDeleteConfirm(
-      pesanan?.namaPelanggan ? `pesanan atas nama ${pesanan.namaPelanggan}` : "pesanan ini"
+      pesanan?.namaPelanggan
+        ? `pesanan atas nama ${pesanan.namaPelanggan}`
+        : "pesanan ini"
     );
 
     if (!result.isConfirmed) return;
@@ -158,7 +160,9 @@ export default function PesananPage() {
   const handleSubmit = async (formData: Partial<Pesanan>) => {
     try {
       showLoadingAlert(
-        editingPesanan ? "Memperbarui data pesanan..." : "Menambahkan pesanan baru..."
+        editingPesanan
+          ? "Memperbarui data pesanan..."
+          : "Menambahkan pesanan baru..."
       );
 
       if (editingPesanan) {
